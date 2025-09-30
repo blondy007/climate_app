@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+*.pyo
+*.dll
+
+# Virtual env
+.venv/
+venv/
+ENV/
+env/
+
+# Packages / build
+dist/
+build/
+eggs/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+.wheels/
+
+# Caches / tooling
+*.cache
+.pytest_cache/
+.mypy_cache/
+.pyre/
+.pytype/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Logs / db
+*.log
+logs/
+*.sqlite3
+
+# IDE / editor
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/secrets.toml
+.streamlit/state/
+.streamlit/cache/
+.streamlit/sessions/
+
+# Local config
+.env
+.env.*
+*.local
+
+# Artifacts
+*.png
+*.pdf
+*.bak
+*.tmp
+~$*

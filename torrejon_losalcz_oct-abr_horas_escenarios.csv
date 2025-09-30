@@ -1,0 +1,127 @@
+Mes,Lugar,Hora,Escenario,Temp (°C),Humedad (%),Viento (km/h),Sensación térmica (°C)
+Abril,Los Alcázares,14:00,Calma,21,65,5,21.0
+Abril,Los Alcázares,14:00,Ventoso,21,65,20,21.0
+Abril,Los Alcázares,14:00,Viento fuerte,21,65,35,21.0
+Abril,Los Alcázares,00:00,Calma,14,68,5,14.0
+Abril,Los Alcázares,00:00,Ventoso,14,68,20,14.0
+Abril,Los Alcázares,00:00,Viento fuerte,14,68,35,14.0
+Abril,Los Alcázares,07:00,Calma,12,70,5,12.0
+Abril,Los Alcázares,07:00,Ventoso,12,70,20,12.0
+Abril,Los Alcázares,07:00,Viento fuerte,12,70,35,12.0
+Abril,Torrejón de Ardoz,14:00,Calma,19,60,5,19.0
+Abril,Torrejón de Ardoz,14:00,Ventoso,19,60,15,19.0
+Abril,Torrejón de Ardoz,14:00,Viento fuerte,19,60,25,19.0
+Abril,Torrejón de Ardoz,00:00,Calma,9,70,5,8.6
+Abril,Torrejón de Ardoz,00:00,Ventoso,9,70,15,6.7
+Abril,Torrejón de Ardoz,00:00,Viento fuerte,9,70,25,5.7
+Abril,Torrejón de Ardoz,07:00,Calma,7,75,5,6.4
+Abril,Torrejón de Ardoz,07:00,Ventoso,7,75,15,4.2
+Abril,Torrejón de Ardoz,07:00,Viento fuerte,7,75,25,3.1
+Diciembre,Los Alcázares,14:00,Calma,16,70,5,16.0
+Diciembre,Los Alcázares,14:00,Ventoso,16,70,20,16.0
+Diciembre,Los Alcázares,14:00,Viento fuerte,16,70,35,16.0
+Diciembre,Los Alcázares,00:00,Calma,10,73,5,9.8
+Diciembre,Los Alcázares,00:00,Ventoso,10,73,20,7.4
+Diciembre,Los Alcázares,00:00,Viento fuerte,10,73,35,6.3
+Diciembre,Los Alcázares,07:00,Calma,8,75,5,7.5
+Diciembre,Los Alcázares,07:00,Ventoso,8,75,20,4.9
+Diciembre,Los Alcázares,07:00,Viento fuerte,8,75,35,3.6
+Diciembre,Torrejón de Ardoz,14:00,Calma,10,70,5,9.8
+Diciembre,Torrejón de Ardoz,14:00,Ventoso,10,70,15,7.9
+Diciembre,Torrejón de Ardoz,14:00,Viento fuerte,10,70,25,6.9
+Diciembre,Torrejón de Ardoz,00:00,Calma,5,80,5,4.1
+Diciembre,Torrejón de Ardoz,00:00,Ventoso,5,80,15,1.7
+Diciembre,Torrejón de Ardoz,00:00,Viento fuerte,5,80,25,0.5
+Diciembre,Torrejón de Ardoz,07:00,Calma,3,85,5,1.8
+Diciembre,Torrejón de Ardoz,07:00,Ventoso,3,85,15,-0.7
+Diciembre,Torrejón de Ardoz,07:00,Viento fuerte,3,85,25,-2.1
+Enero,Los Alcázares,14:00,Calma,16,70,5,16.0
+Enero,Los Alcázares,14:00,Ventoso,16,70,20,16.0
+Enero,Los Alcázares,14:00,Viento fuerte,16,70,35,16.0
+Enero,Los Alcázares,00:00,Calma,9,73,5,8.6
+Enero,Los Alcázares,00:00,Ventoso,9,73,20,6.1
+Enero,Los Alcázares,00:00,Viento fuerte,9,73,35,4.9
+Enero,Los Alcázares,07:00,Calma,7,75,5,6.4
+Enero,Los Alcázares,07:00,Ventoso,7,75,20,3.6
+Enero,Los Alcázares,07:00,Viento fuerte,7,75,35,2.3
+Enero,Torrejón de Ardoz,14:00,Calma,10,75,5,9.8
+Enero,Torrejón de Ardoz,14:00,Ventoso,10,75,15,7.9
+Enero,Torrejón de Ardoz,14:00,Viento fuerte,10,75,25,6.9
+Enero,Torrejón de Ardoz,00:00,Calma,4,80,5,2.9
+Enero,Torrejón de Ardoz,00:00,Ventoso,4,80,15,0.5
+Enero,Torrejón de Ardoz,00:00,Viento fuerte,4,80,25,-0.8
+Enero,Torrejón de Ardoz,07:00,Calma,1,85,5,-0.5
+Enero,Torrejón de Ardoz,07:00,Ventoso,1,85,15,-3.2
+Enero,Torrejón de Ardoz,07:00,Viento fuerte,1,85,25,-4.6
+Febrero,Los Alcázares,14:00,Calma,17,68,5,17.0
+Febrero,Los Alcázares,14:00,Ventoso,17,68,20,17.0
+Febrero,Los Alcázares,14:00,Viento fuerte,17,68,35,17.0
+Febrero,Los Alcázares,00:00,Calma,10,72,5,9.8
+Febrero,Los Alcázares,00:00,Ventoso,10,72,20,7.4
+Febrero,Los Alcázares,00:00,Viento fuerte,10,72,35,6.3
+Febrero,Los Alcázares,07:00,Calma,8,74,5,7.5
+Febrero,Los Alcázares,07:00,Ventoso,8,74,20,4.9
+Febrero,Los Alcázares,07:00,Viento fuerte,8,74,35,3.6
+Febrero,Torrejón de Ardoz,14:00,Calma,12,70,5,12.0
+Febrero,Torrejón de Ardoz,14:00,Ventoso,12,70,15,12.0
+Febrero,Torrejón de Ardoz,14:00,Viento fuerte,12,70,25,12.0
+Febrero,Torrejón de Ardoz,00:00,Calma,5,78,5,4.1
+Febrero,Torrejón de Ardoz,00:00,Ventoso,5,78,15,1.7
+Febrero,Torrejón de Ardoz,00:00,Viento fuerte,5,78,25,0.5
+Febrero,Torrejón de Ardoz,07:00,Calma,3,83,5,1.8
+Febrero,Torrejón de Ardoz,07:00,Ventoso,3,83,15,-0.7
+Febrero,Torrejón de Ardoz,07:00,Viento fuerte,3,83,25,-2.1
+Marzo,Los Alcázares,14:00,Calma,19,66,5,19.0
+Marzo,Los Alcázares,14:00,Ventoso,19,66,20,19.0
+Marzo,Los Alcázares,14:00,Viento fuerte,19,66,35,19.0
+Marzo,Los Alcázares,00:00,Calma,12,70,5,12.0
+Marzo,Los Alcázares,00:00,Ventoso,12,70,20,12.0
+Marzo,Los Alcázares,00:00,Viento fuerte,12,70,35,12.0
+Marzo,Los Alcázares,07:00,Calma,10,72,5,9.8
+Marzo,Los Alcázares,07:00,Ventoso,10,72,20,7.4
+Marzo,Los Alcázares,07:00,Viento fuerte,10,72,35,6.3
+Marzo,Torrejón de Ardoz,14:00,Calma,16,65,5,16.0
+Marzo,Torrejón de Ardoz,14:00,Ventoso,16,65,15,16.0
+Marzo,Torrejón de Ardoz,14:00,Viento fuerte,16,65,25,16.0
+Marzo,Torrejón de Ardoz,00:00,Calma,7,73,5,6.4
+Marzo,Torrejón de Ardoz,00:00,Ventoso,7,73,15,4.2
+Marzo,Torrejón de Ardoz,00:00,Viento fuerte,7,73,25,3.1
+Marzo,Torrejón de Ardoz,07:00,Calma,5,78,5,4.1
+Marzo,Torrejón de Ardoz,07:00,Ventoso,5,78,15,1.7
+Marzo,Torrejón de Ardoz,07:00,Viento fuerte,5,78,25,0.5
+Noviembre,Los Alcázares,14:00,Calma,19,66,5,19.0
+Noviembre,Los Alcázares,14:00,Ventoso,19,66,20,19.0
+Noviembre,Los Alcázares,14:00,Viento fuerte,19,66,35,19.0
+Noviembre,Los Alcázares,00:00,Calma,13,71,5,13.0
+Noviembre,Los Alcázares,00:00,Ventoso,13,71,20,13.0
+Noviembre,Los Alcázares,00:00,Viento fuerte,13,71,35,13.0
+Noviembre,Los Alcázares,07:00,Calma,11,73,5,11.0
+Noviembre,Los Alcázares,07:00,Ventoso,11,73,20,11.0
+Noviembre,Los Alcázares,07:00,Viento fuerte,11,73,35,11.0
+Noviembre,Torrejón de Ardoz,14:00,Calma,13,65,5,13.0
+Noviembre,Torrejón de Ardoz,14:00,Ventoso,13,65,15,13.0
+Noviembre,Torrejón de Ardoz,14:00,Viento fuerte,13,65,25,13.0
+Noviembre,Torrejón de Ardoz,00:00,Calma,7,75,5,6.4
+Noviembre,Torrejón de Ardoz,00:00,Ventoso,7,75,15,4.2
+Noviembre,Torrejón de Ardoz,00:00,Viento fuerte,7,75,25,3.1
+Noviembre,Torrejón de Ardoz,07:00,Calma,5,80,5,4.1
+Noviembre,Torrejón de Ardoz,07:00,Ventoso,5,80,15,1.7
+Noviembre,Torrejón de Ardoz,07:00,Viento fuerte,5,80,25,0.5
+Octubre,Los Alcázares,14:00,Calma,24,65,5,24.0
+Octubre,Los Alcázares,14:00,Ventoso,24,65,20,24.0
+Octubre,Los Alcázares,14:00,Viento fuerte,24,65,35,24.0
+Octubre,Los Alcázares,00:00,Calma,18,70,5,18.0
+Octubre,Los Alcázares,00:00,Ventoso,18,70,20,18.0
+Octubre,Los Alcázares,00:00,Viento fuerte,18,70,35,18.0
+Octubre,Los Alcázares,07:00,Calma,16,72,5,16.0
+Octubre,Los Alcázares,07:00,Ventoso,16,72,20,16.0
+Octubre,Los Alcázares,07:00,Viento fuerte,16,72,35,16.0
+Octubre,Torrejón de Ardoz,14:00,Calma,20,60,5,20.0
+Octubre,Torrejón de Ardoz,14:00,Ventoso,20,60,15,20.0
+Octubre,Torrejón de Ardoz,14:00,Viento fuerte,20,60,25,20.0
+Octubre,Torrejón de Ardoz,00:00,Calma,13,70,5,13.0
+Octubre,Torrejón de Ardoz,00:00,Ventoso,13,70,15,13.0
+Octubre,Torrejón de Ardoz,00:00,Viento fuerte,13,70,25,13.0
+Octubre,Torrejón de Ardoz,07:00,Calma,10,75,5,9.8
+Octubre,Torrejón de Ardoz,07:00,Ventoso,10,75,15,7.9
+Octubre,Torrejón de Ardoz,07:00,Viento fuerte,10,75,25,6.9
