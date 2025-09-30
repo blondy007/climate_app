@@ -609,6 +609,7 @@ def build_summary_markdown(
             lines.append(f"- {message}")
 
     return "\n".join(lines)
+
 def main() -> None:
     ensure_data_dir()
 
@@ -616,6 +617,8 @@ def main() -> None:
         st.session_state["station_search_results"] = pd.DataFrame()
 
     stored_thresholds = load_wind_thresholds()
+
+    uploaded_file = st.session_state.get("upload_csv")
 
     master_df = load_master_csv()
     default_df = pd.DataFrame()
@@ -641,9 +644,8 @@ def main() -> None:
     master_df = combined
     df_base = master_df.copy()
 
-    uploaded_file = st.sidebar.file_uploader("Archivo CSV (Meteostat Hourly)", type=["csv"])
-    source_label = MASTER_FILE.name if uploaded_file is None else uploaded_file.name
     data_key = str(DEFAULT_FILE)
+    source_label = MASTER_FILE.name if uploaded_file is None else uploaded_file.name
 
     if uploaded_file is not None:
         file_bytes = uploaded_file.getvalue()
@@ -690,7 +692,7 @@ def main() -> None:
 
     months_all = (
         list(df_base["Mes"].cat.categories)
-        if "Mes" in df_base.columns and isinstance(df_base["Mes"].dtype, pd.CategoricalDtype)
+        if "Mes" in df_base.columns and isinstance(df_base["Mes"].dtype, CategoricalDtype)
         else sorted(df_base.get("Mes", pd.Series(dtype=str)).dropna().unique(), key=lambda name: MONTH_NAME_TO_NUM.get(name, 13))
     )
     hours_all = sorted(df_base.get("Hora", pd.Series(dtype=str)).dropna().unique())
@@ -698,7 +700,126 @@ def main() -> None:
 
     sidebar_threshold_defaults = build_thresholds(cities_all, stored_thresholds)
 
-    st.sidebar.markdown("### Añadir estación Meteostat")
+    st.sidebar.header("Filtros")
+    st.sidebar.subheader("Ciudades y agregación")
+    if "cities_filter" not in st.session_state:
+        st.session_state["cities_filter"] = cities_all.copy()
+    cities_selected = st.sidebar.multiselect(
+        "Ciudad(es)",
+        options=cities_all,
+        default=st.session_state.get("cities_filter", cities_all),
+        key="cities_filter",
+    )
+    if not cities_selected:
+        cities_selected = cities_all.copy()
+
+    if cities_all:
+        quick_container = st.sidebar.container()
+        quick_container.markdown("_Accesos rápidos_")
+        cols = quick_container.columns(min(3, max(1, len(cities_all))))
+        for idx, city in enumerate(cities_all):
+            col = cols[idx % len(cols)]
+            if col.button(city, key=f"quick_city_{idx}"):
+                st.session_state["cities_filter"] = [city]
+                st.rerun()
+        if quick_container.button("Todas las ciudades", key="quick_city_all", use_container_width=True):
+            st.session_state["cities_filter"] = cities_all.copy()
+            st.rerun()
+
+    agg_keys = list(AGG_FUNCTIONS.keys())
+    default_agg_index = agg_keys.index("mediana") if "mediana" in agg_keys else 0
+    agg_option = st.sidebar.selectbox(
+        "Agregación",
+        options=agg_keys,
+        index=default_agg_index,
+        format_func=lambda key: AGG_LABELS.get(key, key),
+        key="agg_option",
+    )
+
+    st.sidebar.subheader("Fechas y meses")
+    date_filter_value = st.sidebar.date_input(
+        "Rango de fechas",
+        value=(min_date or range_start_default, max_date or today),
+        min_value=min_downloadable_date,
+        max_value=today,
+        format="YYYY/MM/DD",
+        key="date_range_filter",
+    )
+
+    if "months_filter" not in st.session_state:
+        st.session_state["months_filter"] = months_all.copy()
+
+    month_buttons = st.sidebar.columns(4)
+    spring_months = {"Marzo", "Abril", "Mayo"}
+    summer_months = {"Junio", "Julio", "Agosto"}
+    autumn_months = {"Septiembre", "Octubre", "Noviembre"}
+    winter_months = {"Diciembre", "Enero", "Febrero"}
+    if month_buttons[0].button("Primavera", use_container_width=True):
+        st.session_state["months_filter"] = [m for m in months_all if m in spring_months]
+        st.rerun()
+    if month_buttons[1].button("Verano", use_container_width=True):
+        st.session_state["months_filter"] = [m for m in months_all if m in summer_months]
+        st.rerun()
+    if month_buttons[2].button("Otoño", use_container_width=True):
+        st.session_state["months_filter"] = [m for m in months_all if m in autumn_months]
+        st.rerun()
+    if month_buttons[3].button("Invierno", use_container_width=True):
+        st.session_state["months_filter"] = [m for m in months_all if m in winter_months]
+        st.rerun()
+    if st.sidebar.button("Todos los meses", key="months_all_btn", use_container_width=True):
+        st.session_state["months_filter"] = months_all.copy()
+        st.rerun()
+
+    months_selected = st.sidebar.multiselect(
+        "Mes(es)",
+        options=months_all,
+        default=st.session_state["months_filter"],
+        key="months_filter",
+    )
+    if not months_selected:
+        months_selected = months_all.copy()
+
+    st.sidebar.subheader("Horas")
+    if "hours_filter" not in st.session_state:
+        st.session_state["hours_filter"] = hours_all.copy()
+
+    hour_buttons = st.sidebar.columns(3)
+    if hour_buttons[0].button("Horas día (06-18)", use_container_width=True):
+        st.session_state["hours_filter"] = [h for h in hours_all if 6 <= int(h.split(":")[0]) <= 18]
+        st.rerun()
+    if hour_buttons[1].button("Horas noche", use_container_width=True):
+        st.session_state["hours_filter"] = [
+            h for h in hours_all if int(h.split(":")[0]) <= 5 or int(h.split(":")[0]) >= 19
+        ]
+        st.rerun()
+    if hour_buttons[2].button("Todas las horas", use_container_width=True):
+        st.session_state["hours_filter"] = hours_all.copy()
+        st.rerun()
+
+    hours_selected = st.sidebar.multiselect(
+        "Hora(s)",
+        options=hours_all,
+        default=st.session_state["hours_filter"],
+        key="hours_filter",
+    )
+    if not hours_selected:
+        hours_selected = hours_all.copy()
+
+    st.sidebar.subheader("Escenarios")
+    if "scenario_filter" not in st.session_state:
+        st.session_state["scenario_filter"] = ["Todos"]
+    escenario_selected = st.sidebar.multiselect(
+        "Escenario(s)",
+        options=SCENARIO_OPTIONS,
+        default=st.session_state["scenario_filter"],
+        key="scenario_filter",
+    )
+    if not escenario_selected:
+        escenario_selected = ["Todos"]
+
+    show_distribution = st.sidebar.checkbox("Mostrar gráfico de distribución", value=False, key="show_distribution_toggle")
+
+    st.sidebar.header("Gestión de estaciones")
     station_query = st.sidebar.text_input("Nombre o ciudad", key="station_query")
     country_index = COUNTRY_OPTIONS.index("ES") if "ES" in COUNTRY_OPTIONS else 0
     station_country = st.sidebar.selectbox("País", options=COUNTRY_OPTIONS, index=country_index, key="country_select")
@@ -804,99 +925,7 @@ def main() -> None:
             station_id_existing, station_name_existing = existing_options_map[existing_label]
             enqueue_station_download(station_id_existing, station_name_existing)
 
-    st.sidebar.markdown("---")
-
-    date_filter_value = st.sidebar.date_input(
-        "Rango de fechas",
-        value=(min_date or range_start_default, max_date or today),
-        min_value=min_downloadable_date,
-        max_value=today,
-        format="YYYY/MM/DD",
-        key="date_range_filter",
-    )
-
-    if "months_filter" not in st.session_state:
-        st.session_state["months_filter"] = months_all.copy()
-    st.session_state["months_filter"] = [m for m in st.session_state["months_filter"] if m in months_all] or months_all.copy()
-
-    summer_months = {"Junio", "Julio", "Agosto", "Septiembre"}
-    winter_months = {"Diciembre", "Enero", "Febrero", "Marzo"}
-    month_buttons = st.sidebar.columns(3)
-    if month_buttons[0].button("Ver verano", use_container_width=True):
-        st.session_state["months_filter"] = [m for m in months_all if m in summer_months]
-        st.rerun()
-    if month_buttons[1].button("Ver invierno", use_container_width=True):
-        st.session_state["months_filter"] = [m for m in months_all if m in winter_months]
-        st.rerun()
-    if month_buttons[2].button("Todos los meses", use_container_width=True):
-        st.session_state["months_filter"] = months_all.copy()
-        st.rerun()
-
-    months_selected = st.sidebar.multiselect(
-        "Mes(es)",
-        options=months_all,
-        key="months_filter",
-    )
-    if not months_selected:
-        months_selected = months_all.copy()
-
-    if "hours_filter" not in st.session_state:
-        st.session_state["hours_filter"] = hours_all.copy()
-    st.session_state["hours_filter"] = [h for h in st.session_state["hours_filter"] if h in hours_all] or hours_all.copy()
-
-    hour_buttons = st.sidebar.columns(3)
-    if hour_buttons[0].button("Horas día (06-18)", use_container_width=True):
-        st.session_state["hours_filter"] = [h for h in hours_all if 6 <= int(h.split(":")[0]) <= 18]
-        st.rerun()
-    if hour_buttons[1].button("Horas noche", use_container_width=True):
-        st.session_state["hours_filter"] = [
-            h for h in hours_all if int(h.split(":")[0]) <= 5 or int(h.split(":")[0]) >= 19
-        ]
-        st.rerun()
-    if hour_buttons[2].button("Todas las horas", use_container_width=True):
-        st.session_state["hours_filter"] = hours_all.copy()
-        st.rerun()
-
-    hours_selected = st.sidebar.multiselect(
-        "Hora(s)",
-        options=hours_all,
-        key="hours_filter",
-    )
-    if not hours_selected:
-        hours_selected = hours_all.copy()
-
-    if "cities_filter" not in st.session_state:
-        st.session_state["cities_filter"] = cities_all.copy()
-    st.session_state["cities_filter"] = [c for c in st.session_state["cities_filter"] if c in cities_all] or cities_all.copy()
-    cities_selected = st.sidebar.multiselect(
-        "Ciudad(es)",
-        options=cities_all,
-        key="cities_filter",
-    )
-    if not cities_selected:
-        cities_selected = cities_all.copy()
-
-    if "scenario_filter" not in st.session_state:
-        st.session_state["scenario_filter"] = ["Todos"]
-    escenario_selected = st.sidebar.multiselect(
-        "Escenario(s)",
-        options=SCENARIO_OPTIONS,
-        key="scenario_filter",
-    )
-    if not escenario_selected:
-        escenario_selected = ["Todos"]
-
-    agg_option = st.sidebar.selectbox(
-        "Agregación",
-        options=list(AGG_FUNCTIONS.keys()),
-        index=list(AGG_FUNCTIONS.keys()).index("mediana"),
-        format_func=lambda key: AGG_LABELS.get(key, key),
-        key="agg_option",
-    )
-
-    show_distribution = st.sidebar.checkbox("Mostrar gráfico de distribución", value=False, key="show_distribution")
-
-    st.sidebar.markdown("**Umbrales de viento (km/h)**")
+    st.sidebar.header("Configuración de umbrales")
     thresholds_map: Dict[str, Dict[str, float]] = {}
     for city in cities_all:
         base = sidebar_threshold_defaults.get(city) or {"calma": 10.0, "ventoso": 25.0}
@@ -924,6 +953,7 @@ def main() -> None:
     updated_thresholds = stored_thresholds.copy()
     updated_thresholds.update(thresholds_map)
     save_wind_thresholds(updated_thresholds)
+
     df_classified = apply_wind_class(df_base, thresholds_map)
 
     date_range = parse_date_range(date_filter_value)
@@ -968,17 +998,20 @@ def main() -> None:
 
     missing_logs: List[str] = []
 
-    kpi_cols = st.columns(len(kpi_data)) if not kpi_data.empty else []
-    for col, (_, row) in zip(kpi_cols, kpi_data.iterrows()):
-        col.subheader(row["Lugar"])
-        col.caption(f"{agg_label} con los filtros aplicados")
-        col.metric("Temp (°C)", format_metric(row["Temp (°C)"]))
-        col.metric("Se siente (°C)", format_metric(row["Se siente (°C)"]))
-        col.metric("Humedad_%", format_metric(row["Humedad_%"]))
-        col.metric("Viento (km/h)", format_metric(row["Viento (km/h)"]))
-
-    if filtered.empty:
+    if kpi_data.empty:
         st.info("No hay datos con los filtros actuales.")
+    else:
+        summary_table = kpi_data.rename(
+            columns={
+                "Lugar": "Ciudad",
+                "Temp (°C)": "Temp (°C)",
+                "Se siente (°C)": "Se siente (°C)",
+                "Humedad_%": "Humedad (%)",
+                "Viento (km/h)": "Viento (km/h)",
+            }
+        ).set_index("Ciudad")
+        summary_table = summary_table.applymap(lambda v: f"{v:.1f}" if pd.notna(v) else "-")
+        st.table(summary_table)
 
     value_columns = ["Temp (°C)", "Se siente (°C)"]
     has_monthly_data = not monthly[value_columns].dropna(how="all").empty if not monthly.empty else False
@@ -1138,6 +1171,8 @@ def main() -> None:
         mime="text/csv",
     )
 
+    st.sidebar.header("Carga de datos")
+    st.sidebar.file_uploader("Archivo CSV (Meteostat Hourly)", type=["csv"], key="upload_csv")
 
 if __name__ == "__main__":
     main()
