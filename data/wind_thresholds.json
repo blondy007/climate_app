@@ -1,0 +1,30 @@
+{
+  "Torrejón de Ardoz": {
+    "calma": 10.0,
+    "ventoso": 25.0
+  },
+  "Los Alcázares (San Javier)": {
+    "calma": 10.0,
+    "ventoso": 35.0
+  },
+  "TorrejÃ³n de Ardoz": {
+    "calma": 10.0,
+    "ventoso": 25.0
+  },
+  "Los AlcÃ¡zares (San Javier)": {
+    "calma": 10.0,
+    "ventoso": 35.0
+  },
+  "Santa Monica Municipal Airport": {
+    "calma": 10.0,
+    "ventoso": 25.0
+  },
+  "Madrid / Torrejon": {
+    "calma": 10.0,
+    "ventoso": 25.0
+  },
+  "nan": {
+    "calma": 10.0,
+    "ventoso": 25.0
+  }
+}
