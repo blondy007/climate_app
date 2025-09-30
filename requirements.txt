@@ -1,7 +1,4 @@
 streamlit==1.37.0
 pandas==2.2.2
 matplotlib==3.9.2
-python-dateutil==2.9.0.post0
-pytz==2024.1
-meteostat==1.6.7
 numpy==1.26.4
