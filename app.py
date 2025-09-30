@@ -5,12 +5,12 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import streamlit as st
-from meteostat import Hourly, Stations
 from pandas.api.types import CategoricalDtype
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import streamlit as st
 
 st.set_page_config(page_title="Clima Meteostat · Comparativa", layout="wide")
 
@@ -24,6 +24,13 @@ STATION_NAME_MAP = {
     "08227": "Torrejón de Ardoz",
     "san_javier_08433": "Los Alcázares (San Javier)",
     "08433": "Los Alcázares (San Javier)",
+}
+
+STATION_ID_OVERRIDES = {
+    "torrejon_08227": "08227",
+    "08227": "08227",
+    "san_javier_08433": "08433",
+    "08433": "08433",
 }
 
 DEFAULT_THRESHOLDS = {
@@ -49,6 +56,41 @@ MONTH_NAMES = {
 MONTH_NAME_TO_NUM = {name: number for number, name in MONTH_NAMES.items()}
 SCENARIO_CATEGORIES = ["Calma", "Ventoso", "Viento fuerte", "Sin dato"]
 SCENARIO_OPTIONS = SCENARIO_CATEGORIES + ["Todos"]
+
+
+def agg_median(series: pd.Series) -> float:
+    return series.median()
+
+
+def agg_mean(series: pd.Series) -> float:
+    return series.mean()
+
+
+def agg_p25(series: pd.Series) -> float:
+    return series.quantile(0.25)
+
+
+def agg_p75(series: pd.Series) -> float:
+    return series.quantile(0.75)
+
+
+def agg_min(series: pd.Series) -> float:
+    return series.min()
+
+
+def agg_max(series: pd.Series) -> float:
+    return series.max()
+
+
+AGG_FUNCTIONS = {
+    "mediana": agg_median,
+    "media": agg_mean,
+    "p25": agg_p25,
+    "p75": agg_p75,
+    "min": agg_min,
+    "max": agg_max,
+}
+
 AGG_LABELS = {
     "mediana": "Mediana",
     "media": "Media",
@@ -57,23 +99,10 @@ AGG_LABELS = {
     "min": "Mínimo",
     "max": "Máximo",
 }
-AGG_FUNCTIONS = {
-    "mediana": lambda s: s.median(),
-    "media": lambda s: s.mean(),
-    "p25": lambda s: s.quantile(0.25),
-    "p75": lambda s: s.quantile(0.75),
-    "min": lambda s: s.min(),
-    "max": lambda s: s.max(),
-}
-AGG_KEYS = list(AGG_FUNCTIONS.keys())
-COUNTRY_OPTIONS = ["Todos", "ES", "US", "FR", "PT", "IT", "DE"]
 
-STATION_ID_OVERRIDES = {
-    "torrejon_08227": "08227",
-    "08227": "08227",
-    "san_javier_08433": "08433",
-    "08433": "08433",
-}
+COUNTRY_OPTIONS = ["Todos", "ES", "US", "FR", "PT", "IT", "DE", "GB", "CA"]
+UPLOAD_CACHE: Dict[str, bytes] = {}
+
 
 def canonical_station_id(station_id: Optional[str]) -> str:
     value = "" if station_id is None else str(station_id).strip()
@@ -88,7 +117,6 @@ def canonical_station_id(station_id: Optional[str]) -> str:
             return suffix.upper()
     return value.upper()
 
-UPLOAD_CACHE: Dict[str, bytes] = {}
 
 def ensure_data_dir() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -108,6 +136,32 @@ def compute_wind_chill(temp_c: float, wind_kmh: float) -> float:
     if temp_c <= 10 and wind_kmh > 4.8:
         wind_factor = wind_kmh ** 0.16
         return 13.12 + 0.6215 * temp_c - 11.37 * wind_factor + 0.3965 * temp_c * wind_factor
+    return temp_c
+
+
+def compute_heat_index(temp_c: float, humidity: float) -> float:
+    if pd.isna(temp_c) or pd.isna(humidity):
+        return np.nan
+    humidity = float(np.clip(humidity, 0.0, 100.0))
+    temp_f = (temp_c * 9 / 5) + 32
+    hi_f = (-42.379 + 2.04901523 * temp_f + 10.14333127 * humidity
+            - 0.22475541 * temp_f * humidity - 6.83783e-3 * temp_f ** 2
+            - 5.481717e-2 * humidity ** 2 + 1.22874e-3 * temp_f ** 2 * humidity
+            + 8.5282e-4 * temp_f * humidity ** 2 - 1.99e-6 * temp_f ** 2 * humidity ** 2)
+    if humidity < 13 and 80 <= temp_f <= 112:
+        hi_f -= ((13 - humidity) / 4) * np.sqrt((17 - abs(temp_f - 95)) / 17)
+    elif humidity > 85 and 80 <= temp_f <= 87:
+        hi_f += ((humidity - 85) / 10) * ((87 - temp_f) / 5)
+    return (hi_f - 32) * 5 / 9
+
+
+def compute_feels_like(temp_c: float, wind_kmh: float, humidity: float) -> float:
+    if pd.isna(temp_c):
+        return np.nan
+    if not pd.isna(wind_kmh) and temp_c <= 10 and wind_kmh > 4.8:
+        return compute_wind_chill(temp_c, wind_kmh)
+    if not pd.isna(humidity) and temp_c >= 27 and humidity >= 40:
+        return compute_heat_index(temp_c, humidity)
     return temp_c
 
 
@@ -154,8 +208,7 @@ def normalize_meteostat_df(df: pd.DataFrame) -> pd.DataFrame:
 
     if "station" not in df_norm.columns:
         raise KeyError("Falta columna station en el CSV")
-    df_norm["station"] = df_norm["station"].astype(str).str.strip()
-    df_norm["station"] = df_norm["station"].apply(canonical_station_id)
+    df_norm["station"] = df_norm["station"].astype(str).str.strip().apply(canonical_station_id)
 
     if "temp" not in df_norm.columns:
         raise KeyError("Falta columna temp en el CSV")
@@ -166,11 +219,7 @@ def normalize_meteostat_df(df: pd.DataFrame) -> pd.DataFrame:
     if "humedad_%" in df_norm.columns:
         df_norm["humedad_%"] = pd.to_numeric(df_norm["humedad_%"], errors="coerce")
     else:
-        hum_col: Optional[str] = None
-        for candidate in ("rhum", "rh"):
-            if candidate in df_norm.columns:
-                hum_col = candidate
-                break
+        hum_col = next((c for c in ("rhum", "rh") if c in df_norm.columns), None)
         if hum_col is not None:
             df_norm["humedad_%"] = pd.to_numeric(df_norm[hum_col], errors="coerce")
         else:
@@ -178,30 +227,28 @@ def normalize_meteostat_df(df: pd.DataFrame) -> pd.DataFrame:
 
     temp_numeric = pd.to_numeric(df_norm["temp"], errors="coerce")
     wspd_numeric = pd.to_numeric(df_norm["wspd"], errors="coerce")
+    humidity_numeric = pd.to_numeric(df_norm["humedad_%"], errors="coerce")
+
     df_norm["wspd_kmh"] = wspd_numeric * 3.6
     df_norm["feels_like"] = [
-        compute_wind_chill(temp_value, wind_value)
-        for temp_value, wind_value in zip(temp_numeric, df_norm["wspd_kmh"])
+        compute_feels_like(temp, wind, humidity)
+        for temp, wind, humidity in zip(temp_numeric, df_norm["wspd_kmh"], humidity_numeric)
     ]
 
-    station_lower = df_norm["station"].str.lower()
-    df_norm["Lugar"] = station_lower.map(STATION_NAME_MAP)
-    if "name" in df_norm.columns:
-        df_norm["Lugar"] = df_norm["Lugar"].fillna(df_norm["name"].astype(str).str.strip())
-    df_norm["Lugar"] = df_norm["Lugar"].fillna(df_norm["station"])
+    df_norm["Lugar"] = df_norm["station"].map(STATION_NAME_MAP).fillna(df_norm.get("name", df_norm["station"]))
 
     df_norm["MesNum"] = df_norm["datetime"].dt.month
-    month_values = sorted(df_norm["MesNum"].dropna().unique().tolist())
-    month_labels = [MONTH_NAMES.get(int(month), str(int(month))) for month in month_values]
     df_norm["Mes"] = df_norm["MesNum"].map(lambda month: MONTH_NAMES.get(int(month), str(int(month))))
-    df_norm["Mes"] = pd.Categorical(df_norm["Mes"], categories=month_labels, ordered=True)
+    month_values = [MONTH_NAMES.get(int(month), str(int(month))) for month in sorted(df_norm["MesNum"].dropna().unique())]
+    df_norm["Mes"] = pd.Categorical(df_norm["Mes"], categories=month_values, ordered=True)
     df_norm["Hora"] = df_norm["datetime"].dt.strftime("%H:%M")
     df_norm["Fecha"] = df_norm["datetime"].dt.date
 
     df_norm = df_norm.loc[:, ~df_norm.columns.duplicated()]
-
     return df_norm
 
+
+# Remaining functions omitted for brevity
 @st.cache_data(show_spinner=False)
 def load_csv(path: str) -> pd.DataFrame:
     if path.startswith("_uploaded::"):
@@ -222,7 +269,7 @@ def load_master_csv() -> pd.DataFrame:
         return pd.DataFrame(columns=["station", "datetime"])
     df = pd.read_csv(MASTER_FILE, low_memory=False)
     if df.empty:
-        return pd.DataFrame(columns=["station", "datetime"])
+        return normalize_meteostat_df(df)
     return normalize_meteostat_df(df)
 
 
@@ -233,8 +280,6 @@ def save_master_csv(df: pd.DataFrame) -> None:
         df_to_save = df_to_save.sort_values("datetime")
         if {"station", "datetime"}.issubset(df_to_save.columns):
             df_to_save = df_to_save.drop_duplicates(subset=["station", "datetime"], keep="last")
-    else:
-        df_to_save = pd.DataFrame(columns=["station", "datetime"])
     df_to_save.to_csv(MASTER_FILE, index=False)
     load_master_csv.clear()
 
@@ -244,12 +289,8 @@ def load_wind_thresholds() -> Dict[str, Dict[str, float]]:
     if not THRESHOLDS_FILE.exists():
         save_wind_thresholds(DEFAULT_THRESHOLDS)
         return {city: values.copy() for city, values in DEFAULT_THRESHOLDS.items()}
-    try:
-        with THRESHOLDS_FILE.open("r", encoding="utf-8-sig") as fp:
-            data = json.load(fp)
-    except json.JSONDecodeError:
-        save_wind_thresholds(DEFAULT_THRESHOLDS)
-        return {city: values.copy() for city, values in DEFAULT_THRESHOLDS.items()}
+    with THRESHOLDS_FILE.open("r", encoding="utf-8-sig") as fp:
+        data = json.load(fp)
     parsed: Dict[str, Dict[str, float]] = {}
     for city, values in data.items():
         calma = float(values.get("calma", 10.0))
@@ -262,6 +303,7 @@ def save_wind_thresholds(data: Dict[str, Dict[str, float]]) -> None:
     ensure_data_dir()
     with THRESHOLDS_FILE.open("w", encoding="utf-8") as fp:
         json.dump(data, fp, ensure_ascii=False, indent=2)
+
 
 def classify_row_wind(row: pd.Series, thresholds_map: Dict[str, Dict[str, float]]) -> str:
     wind = row.get("wspd_kmh")
@@ -282,34 +324,30 @@ def apply_wind_class(df: pd.DataFrame, thresholds_map: Dict[str, Dict[str, float
     classified = df.copy()
     if not classified.empty:
         classified["escenario"] = classified.apply(classify_row_wind, axis=1, args=(thresholds_map,))
-        classified["escenario"] = pd.Categorical(
-            classified["escenario"], categories=SCENARIO_CATEGORIES, ordered=False
-        )
+        classified["escenario"] = pd.Categorical(classified["escenario"], categories=SCENARIO_CATEGORIES, ordered=False)
     else:
         classified["escenario"] = pd.Categorical([], categories=SCENARIO_CATEGORIES, ordered=False)
     return classified
 
 
 def build_thresholds(cities: List[str], stored: Dict[str, Dict[str, float]]) -> Dict[str, Dict[str, float]]:
-    thresholds: Dict[str, Dict[str, float]] = {}
+    result: Dict[str, Dict[str, float]] = {}
     for city in cities:
         base = stored.get(city) or DEFAULT_THRESHOLDS.get(city) or {"calma": 10.0, "ventoso": 25.0}
-        thresholds[city] = {"calma": float(base["calma"]), "ventoso": float(base["ventoso"])}
-    return thresholds
+        result[city] = {"calma": float(base["calma"]), "ventoso": float(base["ventoso"])}
+    return result
 
 
 @st.cache_data(show_spinner=False)
 def search_stations(query: str, country: Optional[str]) -> pd.DataFrame:
-    stations = Stations().inventory("hourly")
+    stations = Stations()
     if country and country != "Todos":
         stations = stations.region(country=country)
-
+    stations = stations.inventory("hourly")
     df = stations.fetch()
     if df.empty:
         return pd.DataFrame(columns=["id", "name", "country", "latitude", "longitude", "elevation", "timezone"])
-
     df = df.reset_index().rename(columns={"index": "id"})
-
     if query:
         query_norm = query.strip().lower()
         masks = []
@@ -321,10 +359,6 @@ def search_stations(query: str, country: Optional[str]) -> pd.DataFrame:
             for extra in masks[1:]:
                 mask |= extra
             df = df[mask]
-
-    if "name" in df.columns:
-        df = df.sort_values("name")
-
     columns = ["id", "name", "country", "latitude", "longitude", "elevation", "timezone"]
     available_columns = [col for col in columns if col in df.columns]
     return df[available_columns].reset_index(drop=True).head(200)
@@ -361,6 +395,7 @@ def fetch_station_hourly(station_id: str, start: datetime, end: datetime) -> pd.
         df["name"] = meta["name"]
     return normalize_meteostat_df(df)
 
+
 def append_station_to_master(
     station_id: str,
     start: datetime,
@@ -396,15 +431,12 @@ def append_station_to_master(
 
     save_master_csv(combined)
     return new_rows
-
-
-@st.cache_data(show_spinner=False)
 def aggregate_monthly(df: pd.DataFrame, agg: str) -> pd.DataFrame:
-    agg_func = AGG_FUNCTIONS.get(agg, AGG_FUNCTIONS["mediana"])
+    agg_func = AGG_FUNCTIONS.get(agg, agg_median)
 
     months_categories: List[str] = []
     if "Mes" in df.columns:
-        if isinstance(df["Mes"].dtype, CategoricalDtype):
+        if isinstance(df["Mes"].dtype, pd.CategoricalDtype):
             months_categories = list(df["Mes"].cat.categories)
         else:
             raw_months = df["Mes"].dropna().unique().tolist()
@@ -412,7 +444,7 @@ def aggregate_monthly(df: pd.DataFrame, agg: str) -> pd.DataFrame:
 
     cities_categories: List[str] = []
     if "Lugar" in df.columns:
-        if isinstance(df["Lugar"].dtype, CategoricalDtype):
+        if isinstance(df["Lugar"].dtype, pd.CategoricalDtype):
             cities_categories = list(df["Lugar"].cat.categories)
         else:
             cities_categories = list(dict.fromkeys(df["Lugar"].dropna()))
@@ -437,20 +469,15 @@ def aggregate_monthly(df: pd.DataFrame, agg: str) -> pd.DataFrame:
             subset = feels[diff_mask].dropna()
             if not subset.empty:
                 try:
-                    alt_value = agg_func(subset)
-                    if not pd.isna(alt_value):
-                        feel_value = alt_value
+                    adjusted = agg_func(subset)
+                    if not pd.isna(adjusted):
+                        feel_value = adjusted
                 except Exception:  # noqa: BLE001
                     pass
 
         return pd.Series({"Temp (°C)": temp_value, "Se siente (°C)": feel_value})
 
-    grouped = df.groupby(["Mes", "Lugar"], observed=True).apply(summarize)
-
-    if months_categories and cities_categories:
-        idx = pd.MultiIndex.from_product([months_categories, cities_categories], names=["Mes", "Lugar"])
-        grouped = grouped.reindex(idx)
-
+    grouped = df.groupby(["Mes", "Lugar"], observed=True, group_keys=False).apply(summarize, include_groups=False)
     grouped = grouped.reset_index()
 
     if months_categories:
@@ -464,11 +491,11 @@ def aggregate_monthly(df: pd.DataFrame, agg: str) -> pd.DataFrame:
 
 
 def kpis(df: pd.DataFrame, agg: str) -> pd.DataFrame:
-    agg_func = AGG_FUNCTIONS.get(agg, AGG_FUNCTIONS["mediana"])
+    agg_func = AGG_FUNCTIONS.get(agg, agg_median)
 
     cities: List[str] = []
     if "Lugar" in df.columns:
-        if isinstance(df["Lugar"].dtype, CategoricalDtype):
+        if isinstance(df["Lugar"].dtype, pd.CategoricalDtype):
             cities = list(df["Lugar"].cat.categories)
         else:
             cities = list(dict.fromkeys(df["Lugar"].dropna()))
@@ -509,6 +536,7 @@ def kpis(df: pd.DataFrame, agg: str) -> pd.DataFrame:
 
     return result
 
+
 def handle_station_feedback() -> None:
     feedback = st.session_state.pop("add_station_feedback", None)
     if not feedback:
@@ -533,14 +561,54 @@ def parse_date_range(value) -> Optional[tuple]:
 
 
 def station_select_label(row: pd.Series) -> str:
-    name = row.get("name")
     station_id = row.get("id")
+    name = row.get("name")
     country = row.get("country")
-    base = str(station_id) if pd.isna(name) else f"{station_id} · {name}"
-    if pd.notna(country):
+    base = str(station_id)
+    if pd.notna(name) and str(name).strip():
+        base = f"{station_id} · {name}"
+    if pd.notna(country) and str(country).strip():
         return f"{base} ({country})"
     return base
 
+
+def build_summary_markdown(
+    period_label: str,
+    agg_label: str,
+    filters: Dict[str, str],
+    kpi_data: pd.DataFrame,
+    missing_logs: List[str],
+    total_rows: int,
+) -> str:
+    lines: List[str] = ["# Resumen Meteostat", ""]
+    lines.append(f"- Periodo analizado: {period_label}")
+    lines.append(f"- Agregación aplicada: {agg_label}")
+    lines.append(f"- Registros visibles tras filtros: {total_rows}")
+    lines.append("")
+    lines.append("## Filtros activos")
+    for label, value in filters.items():
+        lines.append(f"- **{label}**: {value}")
+
+    lines.append("")
+    lines.append("## Indicadores por ciudad")
+    if kpi_data.empty:
+        lines.append("Sin datos para calcular indicadores con los filtros actuales.")
+    else:
+        for _, row in kpi_data.iterrows():
+            lines.append(
+                f"- **{row['Lugar']}**: Temp {format_metric(row['Temp (°C)'])} °C · "
+                f"Se siente {format_metric(row['Se siente (°C)'])} °C · "
+                f"Humedad {format_metric(row['Humedad_%'])} % · "
+                f"Viento {format_metric(row['Viento (km/h)'])} km/h"
+            )
+
+    if missing_logs:
+        lines.append("")
+        lines.append("## Incidencias de datos")
+        for message in sorted(set(missing_logs)):
+            lines.append(f"- {message}")
+
+    return "\n".join(lines)
 def main() -> None:
     ensure_data_dir()
 
@@ -570,28 +638,11 @@ def main() -> None:
     else:
         combined = master_df
 
-    master_index = (
-        pd.MultiIndex.from_frame(master_df[["station", "datetime"]])
-        if not master_df.empty
-        else pd.MultiIndex(levels=[[], []], codes=[[], []], names=["station", "datetime"])
-    )
-    combined_index = (
-        pd.MultiIndex.from_frame(combined[["station", "datetime"]])
-        if not combined.empty
-        else pd.MultiIndex(levels=[[], []], codes=[[], []], names=["station", "datetime"])
-    )
-
-    if not MASTER_FILE.exists() or len(combined_index.difference(master_index)) > 0:
-        save_master_csv(combined)
-        master_df = combined
-    else:
-        master_df = combined
-
+    master_df = combined
     df_base = master_df.copy()
 
     uploaded_file = st.sidebar.file_uploader("Archivo CSV (Meteostat Hourly)", type=["csv"])
-
-    source_label = MASTER_FILE.name if not uploaded_file else uploaded_file.name
+    source_label = MASTER_FILE.name if uploaded_file is None else uploaded_file.name
     data_key = str(DEFAULT_FILE)
 
     if uploaded_file is not None:
@@ -616,20 +667,16 @@ def main() -> None:
     if df_base.empty:
         st.info("No hay datos disponibles.")
 
-    min_date = df_base["Fecha"].min() if "Fecha" in df_base.columns else None
-    max_date = df_base["Fecha"].max() if "Fecha" in df_base.columns else None
+    min_date = df_base["Fecha"].min() if "Fecha" in df_base.columns and not df_base.empty else None
+    max_date = df_base["Fecha"].max() if "Fecha" in df_base.columns and not df_base.empty else None
 
     today = date.today()
     one_year_ago = today - timedelta(days=365)
     master_min_date = master_df["Fecha"].min() if "Fecha" in master_df.columns and not master_df.empty else None
     default_min_date = default_df["Fecha"].min() if "Fecha" in default_df.columns and not default_df.empty else None
 
-    range_start_candidates = [one_year_ago]
-    if master_min_date:
-        range_start_candidates.append(master_min_date)
-    if default_min_date:
-        range_start_candidates.append(default_min_date)
-    range_start_default = min(range_start_candidates)
+    range_start_candidates = [d for d in (master_min_date, default_min_date, one_year_ago) if d is not None]
+    range_start_default = min(range_start_candidates) if range_start_candidates else one_year_ago
 
     base_min_date = date(1970, 1, 1)
     min_downloadable_candidates = [base_min_date]
@@ -643,20 +690,18 @@ def main() -> None:
 
     months_all = (
         list(df_base["Mes"].cat.categories)
-        if "Mes" in df_base.columns and isinstance(df_base["Mes"].dtype, CategoricalDtype)
-        else sorted(df_base["Mes"].dropna().unique(), key=lambda name: MONTH_NAME_TO_NUM.get(name, 13))
-        if "Mes" in df_base.columns
-        else []
+        if "Mes" in df_base.columns and isinstance(df_base["Mes"].dtype, pd.CategoricalDtype)
+        else sorted(df_base.get("Mes", pd.Series(dtype=str)).dropna().unique(), key=lambda name: MONTH_NAME_TO_NUM.get(name, 13))
     )
-    hours_all = sorted(df_base["Hora"].dropna().unique()) if "Hora" in df_base.columns else []
-    cities_all = list(dict.fromkeys(df_base["Lugar"].dropna())) if "Lugar" in df_base.columns else []
+    hours_all = sorted(df_base.get("Hora", pd.Series(dtype=str)).dropna().unique())
+    cities_all = list(dict.fromkeys(df_base.get("Lugar", pd.Series(dtype=str)).dropna()))
 
     sidebar_threshold_defaults = build_thresholds(cities_all, stored_thresholds)
 
     st.sidebar.markdown("### Añadir estación Meteostat")
-    station_query = st.sidebar.text_input("Nombre o ciudad")
+    station_query = st.sidebar.text_input("Nombre o ciudad", key="station_query")
     country_index = COUNTRY_OPTIONS.index("ES") if "ES" in COUNTRY_OPTIONS else 0
-    station_country = st.sidebar.selectbox("País", options=COUNTRY_OPTIONS, index=country_index)
+    station_country = st.sidebar.selectbox("País", options=COUNTRY_OPTIONS, index=country_index, key="country_select")
     date_range_download = st.sidebar.date_input(
         "Rango de fechas (descarga)",
         value=default_range_value,
@@ -702,9 +747,10 @@ def main() -> None:
             st.session_state["add_station_feedback"] = ("info", "La estación ya estaba en el maestro (ninguna fila nueva)")
 
         st.session_state.pop("station_search_results", None)
+        load_master_csv.clear()
         st.rerun()
 
-    if st.sidebar.button("Buscar estaciones"):
+    if st.sidebar.button("Buscar estaciones", key="search_button"):
         try:
             results = search_stations(station_query, station_country)
             st.session_state["station_search_results"] = results
@@ -722,8 +768,9 @@ def main() -> None:
             "Estación encontrada",
             options=range(len(results_df)),
             format_func=lambda idx: station_labels[idx],
+            key="station_search_select",
         )
-        if st.sidebar.button("Añadir estación al maestro"):
+        if st.sidebar.button("Añadir estación al maestro", key="add_searched_station"):
             station_id = str(results_df.iloc[selection_idx]["id"]) if "id" in results_df.columns else None
             station_name = results_df.iloc[selection_idx].get("name") if "name" in results_df.columns else None
             if not station_id:
@@ -732,22 +779,19 @@ def main() -> None:
             enqueue_station_download(station_id, station_name)
 
     st.sidebar.markdown("#### Añadir estación por ID")
-    station_id_manual = st.sidebar.text_input("ID Meteostat (manual)", key="station_id_manual")
-    station_name_manual = st.sidebar.text_input("Nombre manual (opcional)", key="station_name_manual")
+    station_id_manual = st.sidebar.text_input("ID Meteostat (manual)", key="manual_station_id")
+    station_name_manual = st.sidebar.text_input("Nombre manual (opcional)", key="manual_station_name")
     if st.sidebar.button("Añadir por ID", key="btn_add_manual_station"):
         enqueue_station_download(station_id_manual, station_name_manual or None)
 
     existing_options_map: Dict[str, tuple] = {}
-    if "station" in master_df.columns:
-        existing_df = master_df[["station"]].copy()
-        existing_df["Lugar"] = master_df["Lugar"] if "Lugar" in master_df.columns else np.nan
-        existing_df = existing_df.dropna(subset=["station"]).drop_duplicates()
+    if "station" in master_df.columns and not master_df.empty:
+        existing_df = master_df[["station", "Lugar"]].dropna(subset=["station"]).drop_duplicates()
         for _, row in existing_df.iterrows():
-            station_code = canonical_station_id(row["station"])
-            label_name = row.get("Lugar")
-            label_name_str = str(label_name).strip() if pd.notna(label_name) else ""
-            label = f"{station_code} · {label_name_str}" if label_name_str else station_code
-            existing_options_map[label] = (station_code, label_name_str or None)
+            code = canonical_station_id(row["station"])
+            label_name = str(row.get("Lugar", "")).strip()
+            label = f"{code} · {label_name}" if label_name else code
+            existing_options_map[label] = (code, label_name or None)
 
     if existing_options_map:
         st.sidebar.markdown("#### Actualizar estación ya descargada")
@@ -762,27 +806,95 @@ def main() -> None:
 
     st.sidebar.markdown("---")
 
-    date_value = st.sidebar.date_input(
+    date_filter_value = st.sidebar.date_input(
         "Rango de fechas",
-        value=(min_date, max_date) if min_date and max_date else (),
-        min_value=min_date,
-        max_value=max_date,
+        value=(min_date or range_start_default, max_date or today),
+        min_value=min_downloadable_date,
+        max_value=today,
+        format="YYYY/MM/DD",
+        key="date_range_filter",
     )
 
-    months_selected = st.sidebar.multiselect("Mes(es)", options=months_all, default=months_all)
-    hours_selected = st.sidebar.multiselect("Hora(s)", options=hours_all, default=hours_all)
-    cities_selected = st.sidebar.multiselect("Ciudad(es)", options=cities_all, default=cities_all)
-    escenario_selected = st.sidebar.multiselect("Escenario(s)", options=SCENARIO_OPTIONS, default=["Todos"])
+    if "months_filter" not in st.session_state:
+        st.session_state["months_filter"] = months_all.copy()
+    st.session_state["months_filter"] = [m for m in st.session_state["months_filter"] if m in months_all] or months_all.copy()
 
-    agg_index = AGG_KEYS.index("mediana") if "mediana" in AGG_KEYS else 0
+    summer_months = {"Junio", "Julio", "Agosto", "Septiembre"}
+    winter_months = {"Diciembre", "Enero", "Febrero", "Marzo"}
+    month_buttons = st.sidebar.columns(3)
+    if month_buttons[0].button("Ver verano", use_container_width=True):
+        st.session_state["months_filter"] = [m for m in months_all if m in summer_months]
+        st.rerun()
+    if month_buttons[1].button("Ver invierno", use_container_width=True):
+        st.session_state["months_filter"] = [m for m in months_all if m in winter_months]
+        st.rerun()
+    if month_buttons[2].button("Todos los meses", use_container_width=True):
+        st.session_state["months_filter"] = months_all.copy()
+        st.rerun()
+
+    months_selected = st.sidebar.multiselect(
+        "Mes(es)",
+        options=months_all,
+        key="months_filter",
+    )
+    if not months_selected:
+        months_selected = months_all.copy()
+
+    if "hours_filter" not in st.session_state:
+        st.session_state["hours_filter"] = hours_all.copy()
+    st.session_state["hours_filter"] = [h for h in st.session_state["hours_filter"] if h in hours_all] or hours_all.copy()
+
+    hour_buttons = st.sidebar.columns(3)
+    if hour_buttons[0].button("Horas día (06-18)", use_container_width=True):
+        st.session_state["hours_filter"] = [h for h in hours_all if 6 <= int(h.split(":")[0]) <= 18]
+        st.rerun()
+    if hour_buttons[1].button("Horas noche", use_container_width=True):
+        st.session_state["hours_filter"] = [
+            h for h in hours_all if int(h.split(":")[0]) <= 5 or int(h.split(":")[0]) >= 19
+        ]
+        st.rerun()
+    if hour_buttons[2].button("Todas las horas", use_container_width=True):
+        st.session_state["hours_filter"] = hours_all.copy()
+        st.rerun()
+
+    hours_selected = st.sidebar.multiselect(
+        "Hora(s)",
+        options=hours_all,
+        key="hours_filter",
+    )
+    if not hours_selected:
+        hours_selected = hours_all.copy()
+
+    if "cities_filter" not in st.session_state:
+        st.session_state["cities_filter"] = cities_all.copy()
+    st.session_state["cities_filter"] = [c for c in st.session_state["cities_filter"] if c in cities_all] or cities_all.copy()
+    cities_selected = st.sidebar.multiselect(
+        "Ciudad(es)",
+        options=cities_all,
+        key="cities_filter",
+    )
+    if not cities_selected:
+        cities_selected = cities_all.copy()
+
+    if "scenario_filter" not in st.session_state:
+        st.session_state["scenario_filter"] = ["Todos"]
+    escenario_selected = st.sidebar.multiselect(
+        "Escenario(s)",
+        options=SCENARIO_OPTIONS,
+        key="scenario_filter",
+    )
+    if not escenario_selected:
+        escenario_selected = ["Todos"]
+
     agg_option = st.sidebar.selectbox(
         "Agregación",
-        options=AGG_KEYS,
-        index=agg_index,
+        options=list(AGG_FUNCTIONS.keys()),
+        index=list(AGG_FUNCTIONS.keys()).index("mediana"),
         format_func=lambda key: AGG_LABELS.get(key, key),
+        key="agg_option",
     )
 
-    show_distribution = st.sidebar.checkbox("Mostrar gráfico de distribución", value=False)
+    show_distribution = st.sidebar.checkbox("Mostrar gráfico de distribución", value=False, key="show_distribution")
 
     st.sidebar.markdown("**Umbrales de viento (km/h)**")
     thresholds_map: Dict[str, Dict[str, float]] = {}
@@ -812,10 +924,9 @@ def main() -> None:
     updated_thresholds = stored_thresholds.copy()
     updated_thresholds.update(thresholds_map)
     save_wind_thresholds(updated_thresholds)
-
     df_classified = apply_wind_class(df_base, thresholds_map)
 
-    date_range = parse_date_range(date_value)
+    date_range = parse_date_range(date_filter_value)
     filtered = df_classified.copy()
     if date_range:
         start_date, end_date = date_range
@@ -878,27 +989,68 @@ def main() -> None:
             for _, missing in missing_rows.iterrows():
                 missing_logs.append(f"Sin datos para {missing['Lugar']} en {missing['Mes']} con los filtros actuales")
 
-        fig, ax = plt.subplots()
+        fig = go.Figure()
         for city in cities_selected:
             city_data = monthly[monthly["Lugar"] == city]
             if city_data.empty:
                 continue
             x_values = city_data["Mes"].astype(str)
-            ax.plot(x_values, city_data["Temp (°C)"], marker="o", label=f"{city} · Temp")
-            ax.plot(
-                x_values,
-                city_data["Se siente (°C)"],
-                marker="o",
-                linestyle="--",
-                label=f"{city} · Feels like",
+            fig.add_trace(
+                go.Scatter(
+                    x=x_values,
+                    y=city_data["Temp (°C)"],
+                    mode="lines+markers",
+                    name=f"{city} · Temp",
+                )
             )
-        ax.set_xlabel("Mes")
-        ax.set_ylabel("°C")
-        ax.set_title(f"Evolución mensual · {AGG_LABELS.get(agg_option, agg_option)}")
-        ax.legend()
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        st.pyplot(fig)
+            fig.add_trace(
+                go.Scatter(
+                    x=x_values,
+                    y=city_data["Se siente (°C)"],
+                    mode="lines+markers",
+                    line=dict(dash="dash"),
+                    name=f"{city} · Feels like",
+                )
+            )
+
+        fig.update_layout(
+            title=f"Evolución mensual · {agg_label}",
+            xaxis_title="Mes",
+            yaxis_title="°C",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+            margin=dict(t=60, b=110, l=60, r=20),
+            height=450,
+        )
+        fig.update_xaxes(categoryorder="array", categoryarray=months_selected)
+        st.plotly_chart(fig, use_container_width=True, theme="streamlit")
+
+        delta_df = monthly.copy()
+        delta_df["Delta (°C)"] = delta_df["Se siente (°C)"] - delta_df["Temp (°C)"]
+        delta_available = delta_df.dropna(subset=["Delta (°C)"])
+        if not delta_available.empty:
+            fig_delta = go.Figure()
+            for city in cities_selected:
+                city_data = delta_available[delta_available["Lugar"] == city]
+                if city_data.empty:
+                    continue
+                fig_delta.add_trace(
+                    go.Bar(
+                        x=city_data["Mes"].astype(str),
+                        y=city_data["Delta (°C)"],
+                        name=city,
+                    )
+                )
+            fig_delta.update_layout(
+                barmode="group",
+                title="Diferencia Feels like vs Temp",
+                xaxis_title="Mes",
+                yaxis_title="Δ °C",
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+                margin=dict(t=60, b=110, l=60, r=20),
+                height=420,
+            )
+            fig_delta.update_xaxes(categoryorder="array", categoryarray=months_selected)
+            st.plotly_chart(fig_delta, use_container_width=True, theme="streamlit")
     else:
         st.info("Sin datos agregados para mostrar en el gráfico mensual.")
 
@@ -909,46 +1061,54 @@ def main() -> None:
         mime="text/csv",
     )
 
+    filters_description = {
+        "Meses": ", ".join(months_selected) if months_selected else "Todos",
+        "Horas": ", ".join(hours_selected) if hours_selected else "Todas",
+        "Ciudades": ", ".join(cities_selected) if cities_selected else "Todas",
+        "Escenarios": "Todos" if "Todos" in escenario_selected else ", ".join(escenario_selected),
+    }
+
+    summary_md = build_summary_markdown(
+        period_label,
+        agg_label,
+        filters_description,
+        kpi_data,
+        missing_logs,
+        len(filtered),
+    )
+    st.download_button(
+        "Descargar resumen (Markdown)",
+        summary_md.encode("utf-8"),
+        file_name="resumen_meteostat.md",
+        mime="text/markdown",
+    )
+
     if show_distribution:
         st.subheader("Distribución de temperatura y sensación térmica")
         if filtered.empty:
             st.info("No hay datos para el gráfico de distribución.")
         else:
-            temp_data = []
-            temp_labels = []
+            temp_traces = []
+            feel_traces = []
             for city in cities_selected:
-                values = filtered.loc[filtered["Lugar"] == city, "temp"].dropna()
-                if values.empty:
-                    continue
-                temp_data.append(values)
-                temp_labels.append(city)
+                temp_values = pd.to_numeric(filtered.loc[filtered["Lugar"] == city, "temp"], errors="coerce").dropna()
+                feel_values = pd.to_numeric(filtered.loc[filtered["Lugar"] == city, "feels_like"], errors="coerce").dropna()
+                if not temp_values.empty:
+                    temp_traces.append((city, temp_values))
+                if not feel_values.empty:
+                    feel_traces.append((city, feel_values))
 
-            feels_data = []
-            feels_labels = []
-            for city in cities_selected:
-                values = filtered.loc[filtered["Lugar"] == city, "feels_like"].dropna()
-                if values.empty:
-                    continue
-                feels_data.append(values)
-                feels_labels.append(city)
-
-            if temp_data or feels_data:
-                fig_dist, axes = plt.subplots(1, 2, figsize=(10, 4), sharey=True)
-                if temp_data:
-                    axes[0].boxplot(temp_data, labels=temp_labels)
-                    axes[0].set_title("Temp (°C)")
-                    axes[0].set_xlabel("Ciudad")
-                    axes[0].set_ylabel("°C")
-                else:
-                    axes[0].set_visible(False)
-                if feels_data:
-                    axes[1].boxplot(feels_data, labels=feels_labels)
-                    axes[1].set_title("Feels like (°C)")
-                    axes[1].set_xlabel("Ciudad")
-                else:
-                    axes[1].set_visible(False)
-                plt.tight_layout()
-                st.pyplot(fig_dist)
+            if temp_traces or feel_traces:
+                fig_dist = make_subplots(rows=1, cols=2, shared_yaxes=True, subplot_titles=["Temp (°C)", "Feels like (°C)"])
+                for city, values in temp_traces:
+                    fig_dist.add_trace(go.Box(y=values, name=city, boxpoints="outliers"), row=1, col=1)
+                for city, values in feel_traces:
+                    fig_dist.add_trace(go.Box(y=values, name=city, boxpoints="outliers"), row=1, col=2)
+                fig_dist.update_layout(
+                    legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
+                    margin=dict(t=80, b=100, l=60, r=20),
+                )
+                st.plotly_chart(fig_dist, use_container_width=True, theme="streamlit")
             else:
                 st.info("No hay suficientes datos para el gráfico de distribución.")
 
@@ -981,17 +1141,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
-
-
-
 
 
