@@ -425,11 +425,27 @@ def aggregate_monthly(df: pd.DataFrame, agg: str) -> pd.DataFrame:
             empty["Lugar"] = pd.Categorical([], categories=cities_categories, ordered=False)
         return empty
 
-    grouped = (
-        df.groupby(["Mes", "Lugar"], observed=True)[["temp", "feels_like"]]
-        .agg(agg_func)
-        .rename(columns={"temp": "Temp (°C)", "feels_like": "Se siente (°C)"})
-    )
+    def summarize(group: pd.DataFrame) -> pd.Series:
+        temps = pd.to_numeric(group["temp"], errors="coerce")
+        feels = pd.to_numeric(group["feels_like"], errors="coerce")
+
+        temp_value = agg_func(temps.dropna()) if temps.notna().any() else np.nan
+        feel_value = agg_func(feels.dropna()) if feels.notna().any() else np.nan
+
+        diff_mask = temps.notna() & feels.notna() & (np.abs(temps - feels) > 0.1)
+        if diff_mask.any():
+            subset = feels[diff_mask].dropna()
+            if not subset.empty:
+                try:
+                    alt_value = agg_func(subset)
+                    if not pd.isna(alt_value):
+                        feel_value = alt_value
+                except Exception:  # noqa: BLE001
+                    pass
+
+        return pd.Series({"Temp (°C)": temp_value, "Se siente (°C)": feel_value})
+
+    grouped = df.groupby(["Mes", "Lugar"], observed=True).apply(summarize)
 
     if months_categories and cities_categories:
         idx = pd.MultiIndex.from_product([months_categories, cities_categories], names=["Mes", "Lugar"])
