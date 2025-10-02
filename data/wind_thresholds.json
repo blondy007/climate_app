@@ -26,5 +26,13 @@
   "nan": {
     "calma": 10.0,
     "ventoso": 25.0
+  },
+  "Tenerife / Los Rodeos": {
+    "calma": 10.0,
+    "ventoso": 25.0
+  },
+  "Murcia / San Javier": {
+    "calma": 10.0,
+    "ventoso": 25.0
   }
 }
