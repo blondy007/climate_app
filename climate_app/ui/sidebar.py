@@ -117,11 +117,12 @@ def render_sidebar(
     )
 
     st.sidebar.subheader("Fechas y meses")
-    if "date_range_filter" not in st.session_state:
-        st.session_state["date_range_filter"] = initial_range
+    stored_range = st.session_state.get("date_range_filter", initial_range)
+    normalized_range = _normalize_date_range(stored_range, initial_range)
+    st.session_state["date_range_filter"] = normalized_range
     date_filter_value = st.sidebar.date_input(
         "Rango de fechas",
-        value=st.session_state["date_range_filter"],
+        value=normalized_range,
         min_value=min_downloadable_date,
         max_value=today,
         format="YYYY/MM/DD",
