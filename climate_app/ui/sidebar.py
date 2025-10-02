@@ -17,34 +17,13 @@ from climate_app.shared.models import FilterSelections
 from climate_app.shared.utils import canonical_station_id
 
 
-def _sync_multiselect(
-    *,
-    key_state: str,
-    key_widget: str,
-    options,
-    default_options,
-    label: str,
-) -> list:
-    or_default = default_options if default_options else []
-    st.session_state.setdefault(key_state, or_default.copy())
-    st.session_state.setdefault(key_widget, st.session_state[key_state].copy())
+def _ensure_state_list(key: str, default: list) -> None:
+    if key not in st.session_state:
+        st.session_state[key] = default.copy()
 
-    if not st.session_state[key_state] and default_options:
-        st.session_state[key_state] = default_options.copy()
-        st.session_state[key_widget] = default_options.copy()
 
-    selected = st.sidebar.multiselect(
-        label,
-        options=options,
-        default=st.session_state.get(key_state, default_options),
-        key=key_widget,
-    )
-    if selected:
-        st.session_state[key_state] = selected
-    else:
-        st.session_state[key_state] = default_options.copy()
-        st.session_state[key_widget] = st.session_state[key_state].copy()
-    return st.session_state[key_state]
+def _selected_or_default(values: list, default: list) -> list:
+    return values if values else default.copy()
 
 
 def render_sidebar(
@@ -71,8 +50,8 @@ def render_sidebar(
 
     st.sidebar.header("Filtros")
     st.sidebar.subheader("Ciudades y agregación")
-    st.session_state.setdefault("cities_filter", cities_all.copy())
-    st.session_state.setdefault("cities_filter_widget", st.session_state["cities_filter"].copy())
+
+    _ensure_state_list("cities_filter", cities_all)
 
     if cities_all:
         quick_container = st.sidebar.container()
@@ -82,20 +61,18 @@ def render_sidebar(
             col = cols[idx % len(cols)]
             if col.button(city, key=f"quick_city_{idx}"):
                 st.session_state["cities_filter"] = [city]
-                st.session_state["cities_filter_widget"] = [city]
                 st.experimental_rerun()
         if quick_container.button("Todas las ciudades", key="quick_city_all", use_container_width=True):
             st.session_state["cities_filter"] = cities_all.copy()
-            st.session_state["cities_filter_widget"] = cities_all.copy()
             st.experimental_rerun()
 
-    cities_selected = _sync_multiselect(
-        key_state="cities_filter",
-        key_widget="cities_filter_widget",
+    st.sidebar.multiselect(
+        "Ciudad(es)",
         options=cities_all,
-        default_options=cities_all.copy(),
-        label="Ciudad(es)",
+        default=st.session_state.get("cities_filter", cities_all.copy()),
+        key="cities_filter",
     )
+    cities_selected = _selected_or_default(st.session_state.get("cities_filter", []), cities_all)
 
     agg_keys = list(AGG_FUNCTIONS.keys())
     default_agg_index = agg_keys.index("mediana") if "mediana" in agg_keys else 0
@@ -119,31 +96,72 @@ def render_sidebar(
         key="date_range_filter",
     )
 
-    months_selected = _sync_multiselect(
-        key_state="months_filter",
-        key_widget="months_filter_widget",
+    _ensure_state_list("months_filter", months_all)
+
+    month_buttons = st.sidebar.columns(4)
+    spring_months = {"Marzo", "Abril", "Mayo"}
+    summer_months = {"Junio", "Julio", "Agosto"}
+    autumn_months = {"Septiembre", "Octubre", "Noviembre"}
+    winter_months = {"Diciembre", "Enero", "Febrero"}
+    if month_buttons[0].button("Primavera", use_container_width=True):
+        st.session_state["months_filter"] = [m for m in months_all if m in spring_months]
+        st.experimental_rerun()
+    if month_buttons[1].button("Verano", use_container_width=True):
+        st.session_state["months_filter"] = [m for m in months_all if m in summer_months]
+        st.experimental_rerun()
+    if month_buttons[2].button("Otoño", use_container_width=True):
+        st.session_state["months_filter"] = [m for m in months_all if m in autumn_months]
+        st.experimental_rerun()
+    if month_buttons[3].button("Invierno", use_container_width=True):
+        st.session_state["months_filter"] = [m for m in months_all if m in winter_months]
+        st.experimental_rerun()
+    if st.sidebar.button("Todos los meses", key="months_all_btn", use_container_width=True):
+        st.session_state["months_filter"] = months_all.copy()
+        st.experimental_rerun()
+
+    st.sidebar.multiselect(
+        "Mes(es)",
         options=months_all,
-        default_options=months_all.copy(),
-        label="Mes(es)",
+        default=st.session_state.get("months_filter", months_all.copy()),
+        key="months_filter",
     )
+    months_selected = _selected_or_default(st.session_state.get("months_filter", []), months_all)
 
     st.sidebar.subheader("Horas")
-    hours_selected = _sync_multiselect(
-        key_state="hours_filter",
-        key_widget="hours_filter_widget",
+    _ensure_state_list("hours_filter", hours_all)
+
+    hour_buttons = st.sidebar.columns(3)
+    if hour_buttons[0].button("Horas día (06-18)", use_container_width=True):
+        st.session_state["hours_filter"] = [
+            h for h in hours_all if 6 <= int(h.split(":")[0]) <= 18
+        ]
+        st.experimental_rerun()
+    if hour_buttons[1].button("Horas noche", use_container_width=True):
+        st.session_state["hours_filter"] = [
+            h for h in hours_all if int(h.split(":")[0]) <= 5 or int(h.split(":")[0]) >= 19
+        ]
+        st.experimental_rerun()
+    if hour_buttons[2].button("Todas las horas", use_container_width=True):
+        st.session_state["hours_filter"] = hours_all.copy()
+        st.experimental_rerun()
+
+    st.sidebar.multiselect(
+        "Hora(s)",
         options=hours_all,
-        default_options=hours_all.copy(),
-        label="Hora(s)",
+        default=st.session_state.get("hours_filter", hours_all.copy()),
+        key="hours_filter",
     )
+    hours_selected = _selected_or_default(st.session_state.get("hours_filter", []), hours_all)
 
     st.sidebar.subheader("Escenarios")
-    escenario_selected = _sync_multiselect(
-        key_state="scenario_filter",
-        key_widget="scenario_filter_widget",
+    _ensure_state_list("scenario_filter", ["Todos"])
+    st.sidebar.multiselect(
+        "Escenario(s)",
         options=SCENARIO_OPTIONS,
-        default_options=["Todos"],
-        label="Escenario(s)",
+        default=st.session_state.get("scenario_filter", ["Todos"]),
+        key="scenario_filter",
     )
+    escenario_selected = _selected_or_default(st.session_state.get("scenario_filter", []), ["Todos"])
 
     show_distribution = st.sidebar.checkbox(
         "Mostrar gráfico de distribución", value=False, key="show_distribution_toggle"
