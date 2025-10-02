@@ -76,7 +76,7 @@ def render_dashboard(
                 }
             )
             .set_index("Ciudad")
-            .applymap(lambda value: f"{value:.1f}" if pd.notna(value) else "-")
+            .map(lambda value: f"{value:.1f}" if pd.notna(value) else "-")
         )
         st.table(summary_table)
 
