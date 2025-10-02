@@ -61,10 +61,10 @@ def render_sidebar(
             col = cols[idx % len(cols)]
             if col.button(city, key=f"quick_city_{idx}"):
                 st.session_state["cities_filter"] = [city]
-                st.experimental_rerun()
+                st.rerun()
         if quick_container.button("Todas las ciudades", key="quick_city_all", use_container_width=True):
             st.session_state["cities_filter"] = cities_all.copy()
-            st.experimental_rerun()
+            st.rerun()
 
     st.sidebar.multiselect(
         "Ciudad(es)",
@@ -105,19 +105,19 @@ def render_sidebar(
     winter_months = {"Diciembre", "Enero", "Febrero"}
     if month_buttons[0].button("Primavera", use_container_width=True):
         st.session_state["months_filter"] = [m for m in months_all if m in spring_months]
-        st.experimental_rerun()
+        st.rerun()
     if month_buttons[1].button("Verano", use_container_width=True):
         st.session_state["months_filter"] = [m for m in months_all if m in summer_months]
-        st.experimental_rerun()
+        st.rerun()
     if month_buttons[2].button("Otoño", use_container_width=True):
         st.session_state["months_filter"] = [m for m in months_all if m in autumn_months]
-        st.experimental_rerun()
+        st.rerun()
     if month_buttons[3].button("Invierno", use_container_width=True):
         st.session_state["months_filter"] = [m for m in months_all if m in winter_months]
-        st.experimental_rerun()
+        st.rerun()
     if st.sidebar.button("Todos los meses", key="months_all_btn", use_container_width=True):
         st.session_state["months_filter"] = months_all.copy()
-        st.experimental_rerun()
+        st.rerun()
 
     st.sidebar.multiselect(
         "Mes(es)",
@@ -135,15 +135,15 @@ def render_sidebar(
         st.session_state["hours_filter"] = [
             h for h in hours_all if 6 <= int(h.split(":")[0]) <= 18
         ]
-        st.experimental_rerun()
+        st.rerun()
     if hour_buttons[1].button("Horas noche", use_container_width=True):
         st.session_state["hours_filter"] = [
             h for h in hours_all if int(h.split(":")[0]) <= 5 or int(h.split(":")[0]) >= 19
         ]
-        st.experimental_rerun()
+        st.rerun()
     if hour_buttons[2].button("Todas las horas", use_container_width=True):
         st.session_state["hours_filter"] = hours_all.copy()
-        st.experimental_rerun()
+        st.rerun()
 
     st.sidebar.multiselect(
         "Hora(s)",
@@ -186,16 +186,16 @@ def render_sidebar(
         station_id_clean = canonical_station_id(station_id)
         if not station_id_clean:
             st.session_state["add_station_feedback"] = ("error", "Debes indicar un ID de estación")
-            st.experimental_rerun()
+            st.rerun()
 
         range_parsed = parse_date_range(date_range_download)
         if not range_parsed:
             st.session_state["add_station_feedback"] = ("error", "Selecciona un rango de fechas válido")
-            st.experimental_rerun()
+            st.rerun()
         start_date, end_date = range_parsed
         if start_date > end_date:
             st.session_state["add_station_feedback"] = ("error", "La fecha inicial no puede ser posterior a la final")
-            st.experimental_rerun()
+            st.rerun()
 
         start_dt = datetime.combine(start_date, datetime.min.time())
         end_dt = datetime.combine(end_date, datetime.min.time()) + timedelta(days=1)
@@ -210,7 +210,7 @@ def render_sidebar(
             new_rows = append_station_to_master(station_id_clean, start_dt, end_dt, station_name_clean)
         except Exception as exc:  # noqa: BLE001
             st.session_state["add_station_feedback"] = ("error", f"Error al añadir estación: {exc}")
-            st.experimental_rerun()
+            st.rerun()
 
         if new_rows > 0:
             st.session_state["add_station_feedback"] = (
@@ -225,7 +225,7 @@ def render_sidebar(
 
         st.session_state.pop("station_search_results", None)
         load_master_csv.clear()
-        st.experimental_rerun()
+        st.rerun()
 
     if st.sidebar.button("Buscar estaciones", key="search_button"):
         try:
@@ -255,7 +255,7 @@ def render_sidebar(
                     "error",
                     "No se pudo identificar la estación seleccionada",
                 )
-                st.experimental_rerun()
+                st.rerun()
             enqueue_station_download(station_id, station_name)
 
     st.sidebar.markdown("#### Añadir estación por ID")
