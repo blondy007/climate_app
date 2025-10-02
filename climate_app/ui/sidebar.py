@@ -1,4 +1,4 @@
-﻿import hashlib
+import hashlib
 from datetime import date, datetime, timedelta
 from typing import Dict, Tuple
 
@@ -15,6 +15,36 @@ from climate_app.services.wind import build_thresholds
 from climate_app.shared.constants import COUNTRY_OPTIONS, MONTH_NAME_TO_NUM, SCENARIO_OPTIONS
 from climate_app.shared.models import FilterSelections
 from climate_app.shared.utils import canonical_station_id
+
+
+def _sync_multiselect(
+    *,
+    key_state: str,
+    key_widget: str,
+    options,
+    default_options,
+    label: str,
+) -> list:
+    or_default = default_options if default_options else []
+    st.session_state.setdefault(key_state, or_default.copy())
+    st.session_state.setdefault(key_widget, st.session_state[key_state].copy())
+
+    if not st.session_state[key_state] and default_options:
+        st.session_state[key_state] = default_options.copy()
+        st.session_state[key_widget] = default_options.copy()
+
+    selected = st.sidebar.multiselect(
+        label,
+        options=options,
+        default=st.session_state.get(key_state, default_options),
+        key=key_widget,
+    )
+    if selected:
+        st.session_state[key_state] = selected
+    else:
+        st.session_state[key_state] = default_options.copy()
+        st.session_state[key_widget] = st.session_state[key_state].copy()
+    return st.session_state[key_state]
 
 
 def render_sidebar(
@@ -41,19 +71,8 @@ def render_sidebar(
 
     st.sidebar.header("Filtros")
     st.sidebar.subheader("Ciudades y agregación")
-    if "cities_filter" not in st.session_state:
-        st.session_state["cities_filter"] = cities_all.copy()
-    cities_selected = st.sidebar.multiselect(
-        "Ciudad(es)",
-        options=cities_all,
-        default=st.session_state.get("cities_filter", cities_all),
-        key="cities_filter",
-    )
-    if cities_selected:
-        st.session_state["cities_filter"] = cities_selected
-    else:
-        st.session_state["cities_filter"] = cities_all.copy()
-    cities_selected = st.session_state["cities_filter"]
+    st.session_state.setdefault("cities_filter", cities_all.copy())
+    st.session_state.setdefault("cities_filter_widget", st.session_state["cities_filter"].copy())
 
     if cities_all:
         quick_container = st.sidebar.container()
@@ -63,10 +82,20 @@ def render_sidebar(
             col = cols[idx % len(cols)]
             if col.button(city, key=f"quick_city_{idx}"):
                 st.session_state["cities_filter"] = [city]
-                st.rerun()
+                st.session_state["cities_filter_widget"] = [city]
+                st.experimental_rerun()
         if quick_container.button("Todas las ciudades", key="quick_city_all", use_container_width=True):
             st.session_state["cities_filter"] = cities_all.copy()
-            st.rerun()
+            st.session_state["cities_filter_widget"] = cities_all.copy()
+            st.experimental_rerun()
+
+    cities_selected = _sync_multiselect(
+        key_state="cities_filter",
+        key_widget="cities_filter_widget",
+        options=cities_all,
+        default_options=cities_all.copy(),
+        label="Ciudad(es)",
+    )
 
     agg_keys = list(AGG_FUNCTIONS.keys())
     default_agg_index = agg_keys.index("mediana") if "mediana" in agg_keys else 0
@@ -90,85 +119,31 @@ def render_sidebar(
         key="date_range_filter",
     )
 
-    if "months_filter" not in st.session_state:
-        st.session_state["months_filter"] = months_all.copy()
-
-    month_buttons = st.sidebar.columns(4)
-    spring_months = {"Marzo", "Abril", "Mayo"}
-    summer_months = {"Junio", "Julio", "Agosto"}
-    autumn_months = {"Septiembre", "Octubre", "Noviembre"}
-    winter_months = {"Diciembre", "Enero", "Febrero"}
-    if month_buttons[0].button("Primavera", use_container_width=True):
-        st.session_state["months_filter"] = [m for m in months_all if m in spring_months]
-        st.rerun()
-    if month_buttons[1].button("Verano", use_container_width=True):
-        st.session_state["months_filter"] = [m for m in months_all if m in summer_months]
-        st.rerun()
-    if month_buttons[2].button("Otoño", use_container_width=True):
-        st.session_state["months_filter"] = [m for m in months_all if m in autumn_months]
-        st.rerun()
-    if month_buttons[3].button("Invierno", use_container_width=True):
-        st.session_state["months_filter"] = [m for m in months_all if m in winter_months]
-        st.rerun()
-    if st.sidebar.button("Todos los meses", key="months_all_btn", use_container_width=True):
-        st.session_state["months_filter"] = months_all.copy()
-        st.rerun()
-
-    months_selected = st.sidebar.multiselect(
-        "Mes(es)",
+    months_selected = _sync_multiselect(
+        key_state="months_filter",
+        key_widget="months_filter_widget",
         options=months_all,
-        default=st.session_state.get("months_filter", months_all.copy()),
-        key="months_filter",
+        default_options=months_all.copy(),
+        label="Mes(es)",
     )
-    if months_selected:
-        st.session_state["months_filter"] = months_selected
-    else:
-        st.session_state["months_filter"] = months_all.copy()
-    months_selected = st.session_state["months_filter"]
 
     st.sidebar.subheader("Horas")
-    if "hours_filter" not in st.session_state:
-        st.session_state["hours_filter"] = hours_all.copy()
-
-    hour_buttons = st.sidebar.columns(3)
-    if hour_buttons[0].button("Horas día (06-18)", use_container_width=True):
-        st.session_state["hours_filter"] = [h for h in hours_all if 6 <= int(h.split(":")[0]) <= 18]
-        st.rerun()
-    if hour_buttons[1].button("Horas noche", use_container_width=True):
-        st.session_state["hours_filter"] = [
-            h for h in hours_all if int(h.split(":")[0]) <= 5 or int(h.split(":")[0]) >= 19
-        ]
-        st.rerun()
-    if hour_buttons[2].button("Todas las horas", use_container_width=True):
-        st.session_state["hours_filter"] = hours_all.copy()
-        st.rerun()
-
-    hours_selected = st.sidebar.multiselect(
-        "Hora(s)",
+    hours_selected = _sync_multiselect(
+        key_state="hours_filter",
+        key_widget="hours_filter_widget",
         options=hours_all,
-        default=st.session_state.get("hours_filter", hours_all.copy()),
-        key="hours_filter",
+        default_options=hours_all.copy(),
+        label="Hora(s)",
     )
-    if hours_selected:
-        st.session_state["hours_filter"] = hours_selected
-    else:
-        st.session_state["hours_filter"] = hours_all.copy()
-    hours_selected = st.session_state["hours_filter"]
 
     st.sidebar.subheader("Escenarios")
-    if "scenario_filter" not in st.session_state:
-        st.session_state["scenario_filter"] = ["Todos"]
-    escenario_selected = st.sidebar.multiselect(
-        "Escenario(s)",
+    escenario_selected = _sync_multiselect(
+        key_state="scenario_filter",
+        key_widget="scenario_filter_widget",
         options=SCENARIO_OPTIONS,
-        default=st.session_state.get("scenario_filter", ["Todos"]),
-        key="scenario_filter",
+        default_options=["Todos"],
+        label="Escenario(s)",
     )
-    if escenario_selected:
-        st.session_state["scenario_filter"] = escenario_selected
-    else:
-        st.session_state["scenario_filter"] = ["Todos"]
-    escenario_selected = st.session_state["scenario_filter"]
 
     show_distribution = st.sidebar.checkbox(
         "Mostrar gráfico de distribución", value=False, key="show_distribution_toggle"
@@ -193,16 +168,16 @@ def render_sidebar(
         station_id_clean = canonical_station_id(station_id)
         if not station_id_clean:
             st.session_state["add_station_feedback"] = ("error", "Debes indicar un ID de estación")
-            st.rerun()
+            st.experimental_rerun()
 
         range_parsed = parse_date_range(date_range_download)
         if not range_parsed:
             st.session_state["add_station_feedback"] = ("error", "Selecciona un rango de fechas válido")
-            st.rerun()
+            st.experimental_rerun()
         start_date, end_date = range_parsed
         if start_date > end_date:
             st.session_state["add_station_feedback"] = ("error", "La fecha inicial no puede ser posterior a la final")
-            st.rerun()
+            st.experimental_rerun()
 
         start_dt = datetime.combine(start_date, datetime.min.time())
         end_dt = datetime.combine(end_date, datetime.min.time()) + timedelta(days=1)
@@ -217,7 +192,7 @@ def render_sidebar(
             new_rows = append_station_to_master(station_id_clean, start_dt, end_dt, station_name_clean)
         except Exception as exc:  # noqa: BLE001
             st.session_state["add_station_feedback"] = ("error", f"Error al añadir estación: {exc}")
-            st.rerun()
+            st.experimental_rerun()
 
         if new_rows > 0:
             st.session_state["add_station_feedback"] = (
@@ -232,7 +207,7 @@ def render_sidebar(
 
         st.session_state.pop("station_search_results", None)
         load_master_csv.clear()
-        st.rerun()
+        st.experimental_rerun()
 
     if st.sidebar.button("Buscar estaciones", key="search_button"):
         try:
@@ -262,7 +237,7 @@ def render_sidebar(
                     "error",
                     "No se pudo identificar la estación seleccionada",
                 )
-                st.rerun()
+                st.experimental_rerun()
             enqueue_station_download(station_id, station_name)
 
     st.sidebar.markdown("#### Añadir estación por ID")
