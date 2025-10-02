@@ -1,6 +1,6 @@
 ﻿from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_FILE = BASE_DIR / "meteostat_raw_oct-abr_torrejon08227_sanjavier08433.csv"
 DATA_DIR = BASE_DIR / "data"
 MASTER_FILE = DATA_DIR / "meteostat_master.csv"
