@@ -16,6 +16,12 @@ from climate_app.shared.constants import COUNTRY_OPTIONS, MONTH_NAME_TO_NUM, SCE
 from climate_app.shared.models import FilterSelections
 from climate_app.shared.utils import canonical_station_id
 
+def _normalize_date_range(value, default_range):
+    parsed = parse_date_range(value)
+    if parsed is None:
+        return default_range
+    return parsed
+
 
 def _sanitize_state(key: str, options: list, fallback: list | None = None) -> list:
     available = list(options)
@@ -119,8 +125,7 @@ def render_sidebar(
     st.sidebar.subheader("Fechas y meses")
     stored_range = st.session_state.get("date_range_filter", initial_range)
     normalized_range = _normalize_date_range(stored_range, initial_range)
-    st.session_state["date_range_filter"] = normalized_range
-    date_filter_value = st.sidebar.date_input(
+    date_input_value = st.sidebar.date_input(
         "Rango de fechas",
         value=normalized_range,
         min_value=min_downloadable_date,
@@ -128,6 +133,8 @@ def render_sidebar(
         format="YYYY/MM/DD",
         key="date_range_filter",
     )
+    date_filter_value = _normalize_date_range(date_input_value, normalized_range)
+    st.session_state["date_range_filter"] = date_filter_value
 
     _sanitize_state("months_filter", months_all)
     month_buttons = st.sidebar.columns(4)
