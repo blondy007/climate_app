@@ -17,15 +17,22 @@ from climate_app.shared.models import FilterSelections
 from climate_app.shared.utils import canonical_station_id
 
 
+def _sanitize_state(key: str, options: list, fallback: list | None = None) -> list:
+    available = list(options)
+    base = fallback if fallback is not None else available
+    current = [item for item in st.session_state.get(key, []) if item in available]
+    if not current and base:
+        current = base.copy()
+    st.session_state[key] = current
+    return current
+
+
 def _multiselect_with_state(
     *, label: str, options: list, state_key: str, widget_key: str, fallback: list | None = None
 ) -> list:
     available = list(options)
     base = fallback if fallback is not None else available
-    current_state = [item for item in st.session_state.get(state_key, []) if item in available]
-    if not current_state and base:
-        current_state = base.copy()
-    st.session_state[state_key] = current_state
+    current_state = _sanitize_state(state_key, available, base)
 
     if widget_key not in st.session_state:
         st.session_state[widget_key] = current_state.copy()
@@ -121,6 +128,28 @@ def render_sidebar(
         key="date_range_filter",
     )
 
+    _sanitize_state("months_filter", months_all)
+    month_buttons = st.sidebar.columns(4)
+    spring_months = {"Marzo", "Abril", "Mayo"}
+    summer_months = {"Junio", "Julio", "Agosto"}
+    autumn_months = {"Septiembre", "Octubre", "Noviembre"}
+    winter_months = {"Diciembre", "Enero", "Febrero"}
+    if month_buttons[0].button("Primavera", use_container_width=True):
+        st.session_state["months_filter"] = [m for m in months_all if m in spring_months]
+        st.rerun()
+    if month_buttons[1].button("Verano", use_container_width=True):
+        st.session_state["months_filter"] = [m for m in months_all if m in summer_months]
+        st.rerun()
+    if month_buttons[2].button("Otoño", use_container_width=True):
+        st.session_state["months_filter"] = [m for m in months_all if m in autumn_months]
+        st.rerun()
+    if month_buttons[3].button("Invierno", use_container_width=True):
+        st.session_state["months_filter"] = [m for m in months_all if m in winter_months]
+        st.rerun()
+    if st.sidebar.button("Todos los meses", key="months_all_btn", use_container_width=True):
+        st.session_state["months_filter"] = months_all.copy()
+        st.rerun()
+
     months_selected = _multiselect_with_state(
         label="Mes(es)",
         options=months_all,
@@ -130,6 +159,22 @@ def render_sidebar(
     )
 
     st.sidebar.subheader("Horas")
+    _sanitize_state("hours_filter", hours_all)
+    hour_buttons = st.sidebar.columns(3)
+    if hour_buttons[0].button("Horas día (06-18)", use_container_width=True):
+        st.session_state["hours_filter"] = [
+            h for h in hours_all if 6 <= int(h.split(":")[0]) <= 18
+        ]
+        st.rerun()
+    if hour_buttons[1].button("Horas noche", use_container_width=True):
+        st.session_state["hours_filter"] = [
+            h for h in hours_all if int(h.split(":")[0]) <= 5 or int(h.split(":")[0]) >= 19
+        ]
+        st.rerun()
+    if hour_buttons[2].button("Todas las horas", use_container_width=True):
+        st.session_state["hours_filter"] = hours_all.copy()
+        st.rerun()
+
     hours_selected = _multiselect_with_state(
         label="Hora(s)",
         options=hours_all,
@@ -148,14 +193,14 @@ def render_sidebar(
     )
 
     show_distribution = st.sidebar.checkbox(
-        "Mostrar gráfico de distribución", value=False, key="show_distribution_toggle",
+        "Mostrar gráfico de distribución", value=False, key="show_distribution_toggle"
     )
 
     st.sidebar.header("Gestión de estaciones")
     station_query = st.sidebar.text_input("Nombre o ciudad", key="station_query")
     country_index = COUNTRY_OPTIONS.index("ES") if "ES" in COUNTRY_OPTIONS else 0
     station_country = st.sidebar.selectbox(
-        "País", options=COUNTRY_OPTIONS, index=country_index, key="country_select",
+        "País", options=COUNTRY_OPTIONS, index=country_index, key="country_select"
     )
     date_range_download = st.sidebar.date_input(
         "Rango de fechas (descarga)",
