@@ -1,4 +1,4 @@
-﻿import hashlib
+import hashlib
 import io
 import json
 from datetime import date, datetime, timedelta
