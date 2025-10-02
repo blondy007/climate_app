@@ -3,13 +3,14 @@ import io
 import json
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 from pandas.api.types import CategoricalDtype
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from meteostat import Hourly, Stations
 import streamlit as st
 
 st.set_page_config(page_title="Clima Meteostat · Comparativa", layout="wide")
@@ -280,7 +281,9 @@ def save_master_csv(df: pd.DataFrame) -> None:
         df_to_save = df_to_save.sort_values("datetime")
         if {"station", "datetime"}.issubset(df_to_save.columns):
             df_to_save = df_to_save.drop_duplicates(subset=["station", "datetime"], keep="last")
-    df_to_save.to_csv(MASTER_FILE, index=False)
+    temp_path = MASTER_FILE.with_name(f"{MASTER_FILE.name}.tmp")
+    df_to_save.to_csv(temp_path, index=False, encoding="utf-8")
+    temp_path.replace(MASTER_FILE)
     load_master_csv.clear()
 
 
@@ -431,63 +434,132 @@ def append_station_to_master(
 
     save_master_csv(combined)
     return new_rows
-def aggregate_monthly(df: pd.DataFrame, agg: str) -> pd.DataFrame:
+
+def summarize_temperatures(series: pd.Series, agg_func) -> float:
+    values = pd.to_numeric(series, errors="coerce").dropna()
+    return agg_func(values) if not values.empty else np.nan
+
+
+def summarize_pair(group: pd.DataFrame, agg_func) -> pd.Series:
+    temp_value = summarize_temperatures(group["temp"], agg_func)
+    feel_value = summarize_temperatures(group["feels_like"], agg_func)
+
+    temps = pd.to_numeric(group["temp"], errors="coerce")
+    feels = pd.to_numeric(group["feels_like"], errors="coerce")
+    diff_mask = temps.notna() & feels.notna() & (np.abs(temps - feels) > 0.1)
+    if diff_mask.any():
+        subset = feels[diff_mask].dropna()
+        if not subset.empty:
+            try:
+                adjusted = agg_func(subset)
+                if not pd.isna(adjusted):
+                    feel_value = adjusted
+            except Exception:  # noqa: BLE001
+                pass
+
+    humidity_value = np.nan
+    if "humedad_%" in group.columns:
+        humidity_value = summarize_temperatures(group["humedad_%"], agg_func)
+
+    wind_value = np.nan
+    if "wspd_kmh" in group.columns:
+        wind_value = summarize_temperatures(group["wspd_kmh"], agg_func)
+
+    return pd.Series(
+        {
+            "Temp (°C)": temp_value,
+            "Se siente (°C)": feel_value,
+            "Humedad_%": humidity_value,
+            "Viento (km/h)": wind_value,
+        }
+    )
+
+
+
+
+def aggregate_series(df: pd.DataFrame, agg: str, granularity: str) -> pd.DataFrame:
     agg_func = AGG_FUNCTIONS.get(agg, agg_median)
 
-    months_categories: List[str] = []
-    if "Mes" in df.columns:
-        if isinstance(df["Mes"].dtype, pd.CategoricalDtype):
-            months_categories = list(df["Mes"].cat.categories)
-        else:
-            raw_months = df["Mes"].dropna().unique().tolist()
-            months_categories = sorted(raw_months, key=lambda name: MONTH_NAME_TO_NUM.get(name, 13))
+    has_humidity = "humedad_%" in df.columns
+    has_wind = "wspd_kmh" in df.columns
 
-    cities_categories: List[str] = []
-    if "Lugar" in df.columns:
-        if isinstance(df["Lugar"].dtype, pd.CategoricalDtype):
-            cities_categories = list(df["Lugar"].cat.categories)
-        else:
-            cities_categories = list(dict.fromkeys(df["Lugar"].dropna()))
+    def empty_frame(time_label: str) -> pd.DataFrame:
+        columns = [time_label, "Lugar", "Temp (°C)", "Se siente (°C)"]
+        if has_humidity:
+            columns.append("Humedad_%")
+        if has_wind:
+            columns.append("Viento (km/h)")
+        return pd.DataFrame(columns=columns)
 
     if df.empty:
-        empty = pd.DataFrame(columns=["Mes", "Lugar", "Temp (°C)", "Se siente (°C)"])
-        if months_categories:
-            empty["Mes"] = pd.Categorical([], categories=months_categories, ordered=True)
+        if granularity == "monthly":
+            return empty_frame("Mes")
+        if granularity == "daily":
+            return empty_frame("Fecha")
+        return empty_frame("FechaHora")
+
+    if "Lugar" in df.columns and isinstance(df["Lugar"].dtype, pd.CategoricalDtype):
+        cities_categories = list(df["Lugar"].cat.categories)
+    else:
+        cities_categories = list(dict.fromkeys(df.get("Lugar", pd.Series(dtype=str)).dropna()))
+
+    def apply_city_categories(result: pd.DataFrame) -> pd.DataFrame:
         if cities_categories:
-            empty["Lugar"] = pd.Categorical([], categories=cities_categories, ordered=False)
-        return empty
+            result["Lugar"] = pd.Categorical(result["Lugar"], categories=cities_categories, ordered=False)
+        return result
 
-    def summarize(group: pd.DataFrame) -> pd.Series:
-        temps = pd.to_numeric(group["temp"], errors="coerce")
-        feels = pd.to_numeric(group["feels_like"], errors="coerce")
+    def reorder_columns(result: pd.DataFrame, time_label: str) -> pd.DataFrame:
+        columns = [time_label, "Lugar", "Temp (°C)", "Se siente (°C)"]
+        if has_humidity and "Humedad_%" in result.columns:
+            columns.append("Humedad_%")
+        if has_wind and "Viento (km/h)" in result.columns:
+            columns.append("Viento (km/h)")
+        for column in columns:
+            if column not in result.columns:
+                result[column] = np.nan
+        return result.loc[:, columns]
 
-        temp_value = agg_func(temps.dropna()) if temps.notna().any() else np.nan
-        feel_value = agg_func(feels.dropna()) if feels.notna().any() else np.nan
+    if granularity == "monthly":
+        if "Mes" in df.columns and isinstance(df["Mes"].dtype, CategoricalDtype):
+            months_categories = list(df["Mes"].cat.categories)
+        else:
+            months_categories = sorted(
+                df.get("Mes", pd.Series(dtype=str)).dropna().unique(),
+                key=lambda name: MONTH_NAME_TO_NUM.get(name, 13),
+            )
+        grouped = (
+            df.groupby(["Mes", "Lugar"], observed=True, group_keys=False)
+            .apply(summarize_pair, agg_func)
+            .reset_index()
+        )
+        if months_categories:
+            grouped["Mes"] = pd.Categorical(grouped["Mes"], categories=months_categories, ordered=True)
+        grouped = apply_city_categories(grouped)
+        grouped = grouped.sort_values(["Mes", "Lugar"]).reset_index(drop=True)
+        return reorder_columns(grouped, "Mes")
 
-        diff_mask = temps.notna() & feels.notna() & (np.abs(temps - feels) > 0.1)
-        if diff_mask.any():
-            subset = feels[diff_mask].dropna()
-            if not subset.empty:
-                try:
-                    adjusted = agg_func(subset)
-                    if not pd.isna(adjusted):
-                        feel_value = adjusted
-                except Exception:  # noqa: BLE001
-                    pass
+    if granularity == "daily":
+        grouped = (
+            df.groupby(["Fecha", "Lugar"], observed=True, group_keys=False)
+            .apply(summarize_pair, agg_func)
+            .reset_index()
+        )
+        grouped["Fecha"] = pd.to_datetime(grouped["Fecha"])
+        grouped = apply_city_categories(grouped)
+        grouped = grouped.sort_values(["Fecha", "Lugar"]).reset_index(drop=True)
+        return reorder_columns(grouped, "Fecha")
 
-        return pd.Series({"Temp (°C)": temp_value, "Se siente (°C)": feel_value})
-
-    grouped = df.groupby(["Mes", "Lugar"], observed=True, group_keys=False).apply(summarize, include_groups=False)
-    grouped = grouped.reset_index()
-
-    if months_categories:
-        grouped["Mes"] = pd.Categorical(grouped["Mes"], categories=months_categories, ordered=True)
-    if cities_categories:
-        grouped["Lugar"] = pd.Categorical(grouped["Lugar"], categories=cities_categories, ordered=False)
-
-    sort_columns = ["Mes", "Lugar"] if months_categories else ["Lugar"]
-    grouped = grouped.sort_values(sort_columns).reset_index(drop=True)
-    return grouped
+    df_hourly = df.copy()
+    df_hourly["FechaHora"] = df_hourly["datetime"].dt.tz_convert("Europe/Madrid")
+    grouped = (
+        df_hourly.groupby(["FechaHora", "Lugar"], observed=True, group_keys=False)
+        .apply(summarize_pair, agg_func)
+        .reset_index()
+    )
+    grouped["FechaHora"] = pd.to_datetime(grouped["FechaHora"])
+    grouped = apply_city_categories(grouped)
+    grouped = grouped.sort_values(["FechaHora", "Lugar"]).reset_index(drop=True)
+    return reorder_columns(grouped, "FechaHora")
 
 
 def kpis(df: pd.DataFrame, agg: str) -> pd.DataFrame:
@@ -500,35 +572,54 @@ def kpis(df: pd.DataFrame, agg: str) -> pd.DataFrame:
         else:
             cities = list(dict.fromkeys(df["Lugar"].dropna()))
 
+    has_humidity = "humedad_%" in df.columns
+    has_wind = "wspd_kmh" in df.columns
+
     if df.empty:
-        return pd.DataFrame(
-            {
-                "Lugar": cities,
-                "Temp (°C)": [np.nan] * len(cities),
-                "Se siente (°C)": [np.nan] * len(cities),
-                "Humedad_%": [np.nan] * len(cities),
-                "Viento (km/h)": [np.nan] * len(cities),
-            }
-        )
+        base = {
+            "Lugar": cities,
+            "Temp (°C)": [np.nan] * len(cities),
+            "Se siente (°C)": [np.nan] * len(cities),
+        }
+        if has_humidity:
+            base["Humedad_%"] = [np.nan] * len(cities)
+        else:
+            base["Humedad_%"] = [np.nan] * len(cities)
+        if has_wind:
+            base["Viento (km/h)"] = [np.nan] * len(cities)
+        else:
+            base["Viento (km/h)"] = [np.nan] * len(cities)
+        return pd.DataFrame(base)
+
+    agg_kwargs = {
+        "temp": ("temp", agg_func),
+        "feels_like": ("feels_like", agg_func),
+    }
+    if has_humidity:
+        agg_kwargs["humedad"] = ("humedad_%", agg_func)
+    if has_wind:
+        agg_kwargs["viento"] = ("wspd_kmh", agg_func)
 
     result = (
         df.groupby("Lugar", observed=True)
-        .agg(
-            temp=("temp", agg_func),
-            feels_like=("feels_like", agg_func),
-            humedad=("humedad_%", agg_func),
-            viento=("wspd_kmh", agg_func),
-        )
+        .agg(**agg_kwargs)
         .reset_index()
-        .rename(
-            columns={
-                "temp": "Temp (°C)",
-                "feels_like": "Se siente (°C)",
-                "humedad": "Humedad_%",
-                "viento": "Viento (km/h)",
-            }
-        )
     )
+
+    rename_map = {
+        "temp": "Temp (°C)",
+        "feels_like": "Se siente (°C)",
+    }
+    if has_humidity and "humedad" in result.columns:
+        rename_map["humedad"] = "Humedad_%"
+    if has_wind and "viento" in result.columns:
+        rename_map["viento"] = "Viento (km/h)"
+
+    result = result.rename(columns=rename_map)
+
+    for column in ["Humedad_%", "Viento (km/h)"]:
+        if column not in result.columns:
+            result[column] = np.nan
 
     if cities:
         result["Lugar"] = pd.Categorical(result["Lugar"], categories=cities, ordered=False)
@@ -550,14 +641,44 @@ def handle_station_feedback() -> None:
         st.error(message)
 
 
-def parse_date_range(value) -> Optional[tuple]:
+def parse_date_range(value) -> Optional[Tuple[date, date]]:
+    start: Optional[date] = None
+    end: Optional[date] = None
     if isinstance(value, tuple) and len(value) == 2:
-        return value
-    if isinstance(value, list) and len(value) == 2:
-        return value[0], value[1]
-    if value:
-        return (value, value)
-    return None
+        start, end = value
+    elif isinstance(value, list) and len(value) == 2:
+        start, end = value[0], value[1]
+    elif value:
+        start = value
+    if start is None:
+        return None
+    if end is None:
+        end = start
+    if start > end:
+        end = start
+    return start, end
+
+
+def determine_granularity(start: date, end: date) -> str:
+    span_days = (end - start).days + 1
+    if span_days <= 2:
+        return 'hourly'
+    if span_days <= 31:
+        return 'daily'
+    return 'monthly'
+
+
+def format_axis_values(series: pd.Series, granularity: str) -> List[str]:
+    if series.empty:
+        return []
+    if granularity == 'monthly':
+        return series.astype(str).tolist()
+    converted = pd.to_datetime(series)
+    if granularity == 'daily':
+        return converted.dt.strftime('%Y-%m-%d').tolist()
+    if converted.dt.tz is None:
+        converted = converted.dt.tz_localize('UTC')
+    return converted.dt.tz_convert('Europe/Madrid').dt.strftime('%Y-%m-%d %H:%M').tolist()
 
 
 def station_select_label(row: pd.Series) -> str:
@@ -956,7 +1077,15 @@ def main() -> None:
 
     df_classified = apply_wind_class(df_base, thresholds_map)
 
-    date_range = parse_date_range(date_filter_value)
+    raw_date_range = parse_date_range(date_filter_value)
+    if raw_date_range is None:
+        st.session_state.pop("active_date_range", None)
+    else:
+        previous_range = st.session_state.get("active_date_range")
+        if previous_range != raw_date_range:
+            st.session_state["active_date_range"] = raw_date_range
+    date_range = st.session_state.get("active_date_range")
+
     filtered = df_classified.copy()
     if date_range:
         start_date, end_date = date_range
@@ -981,195 +1110,290 @@ def main() -> None:
         filtered = filtered[filtered["escenario"].isin(escenario_selected)]
 
     filtered = filtered.copy()
-    filtered["Mes"] = pd.Categorical(filtered["Mes"], categories=months_selected, ordered=True)
-    filtered["Lugar"] = pd.Categorical(filtered["Lugar"], categories=cities_selected, ordered=False)
+    if "Mes" in filtered.columns:
+        filtered["Mes"] = pd.Categorical(filtered["Mes"], categories=months_selected, ordered=True)
+    if "Lugar" in filtered.columns:
+        filtered["Lugar"] = pd.Categorical(filtered["Lugar"], categories=cities_selected, ordered=False)
 
     agg_label = AGG_LABELS.get(agg_option, agg_option)
-    if filtered.empty:
-        period_label = "sin datos con los filtros actuales"
+
+    if not date_range:
+        st.info("Selecciona fecha de inicio.")
     else:
-        period_start = filtered["Fecha"].min()
-        period_end = filtered["Fecha"].max()
-        period_label = f"{period_start:%Y/%m/%d} – {period_end:%Y/%m/%d}"
-    st.markdown(f"*Indicadores agregados por ciudad ({agg_label}) sobre el periodo {period_label}.*")
-
-    monthly = aggregate_monthly(filtered, agg_option)
-    kpi_data = kpis(filtered, agg_option)
-
-    missing_logs: List[str] = []
-
-    if kpi_data.empty:
-        st.info("No hay datos con los filtros actuales.")
-    else:
-        summary_table = kpi_data.rename(
-            columns={
-                "Lugar": "Ciudad",
-                "Temp (°C)": "Temp (°C)",
-                "Se siente (°C)": "Se siente (°C)",
-                "Humedad_%": "Humedad (%)",
-                "Viento (km/h)": "Viento (km/h)",
-            }
-        ).set_index("Ciudad")
-        summary_table = summary_table.applymap(lambda v: f"{v:.1f}" if pd.notna(v) else "-")
-        st.table(summary_table)
-
-    value_columns = ["Temp (°C)", "Se siente (°C)"]
-    has_monthly_data = not monthly[value_columns].dropna(how="all").empty if not monthly.empty else False
-
-    if has_monthly_data:
-        missing_rows = monthly[monthly[value_columns].isna().all(axis=1)]
-        if not missing_rows.empty:
-            for _, missing in missing_rows.iterrows():
-                missing_logs.append(f"Sin datos para {missing['Lugar']} en {missing['Mes']} con los filtros actuales")
-
-        fig = go.Figure()
-        for city in cities_selected:
-            city_data = monthly[monthly["Lugar"] == city]
-            if city_data.empty:
-                continue
-            x_values = city_data["Mes"].astype(str)
-            fig.add_trace(
-                go.Scatter(
-                    x=x_values,
-                    y=city_data["Temp (°C)"],
-                    mode="lines+markers",
-                    name=f"{city} · Temp",
-                )
-            )
-            fig.add_trace(
-                go.Scatter(
-                    x=x_values,
-                    y=city_data["Se siente (°C)"],
-                    mode="lines+markers",
-                    line=dict(dash="dash"),
-                    name=f"{city} · Feels like",
-                )
-            )
-
-        fig.update_layout(
-            title=f"Evolución mensual · {agg_label}",
-            xaxis_title="Mes",
-            yaxis_title="°C",
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
-            margin=dict(t=60, b=110, l=60, r=20),
-            height=450,
-        )
-        fig.update_xaxes(categoryorder="array", categoryarray=months_selected)
-        st.plotly_chart(fig, use_container_width=True, theme="streamlit")
-
-        delta_df = monthly.copy()
-        delta_df["Delta (°C)"] = delta_df["Se siente (°C)"] - delta_df["Temp (°C)"]
-        delta_available = delta_df.dropna(subset=["Delta (°C)"])
-        if not delta_available.empty:
-            fig_delta = go.Figure()
-            for city in cities_selected:
-                city_data = delta_available[delta_available["Lugar"] == city]
-                if city_data.empty:
-                    continue
-                fig_delta.add_trace(
-                    go.Bar(
-                        x=city_data["Mes"].astype(str),
-                        y=city_data["Delta (°C)"],
-                        name=city,
-                    )
-                )
-            fig_delta.update_layout(
-                barmode="group",
-                title="Diferencia Feels like vs Temp",
-                xaxis_title="Mes",
-                yaxis_title="Δ °C",
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
-                margin=dict(t=60, b=110, l=60, r=20),
-                height=420,
-            )
-            fig_delta.update_xaxes(categoryorder="array", categoryarray=months_selected)
-            st.plotly_chart(fig_delta, use_container_width=True, theme="streamlit")
-    else:
-        st.info("Sin datos agregados para mostrar en el gráfico mensual.")
-
-    st.download_button(
-        "Descargar agregado mensual (CSV)",
-        monthly.to_csv(index=False).encode("utf-8"),
-        file_name="agregado_mensual.csv",
-        mime="text/csv",
-    )
-
-    filters_description = {
-        "Meses": ", ".join(months_selected) if months_selected else "Todos",
-        "Horas": ", ".join(hours_selected) if hours_selected else "Todas",
-        "Ciudades": ", ".join(cities_selected) if cities_selected else "Todas",
-        "Escenarios": "Todos" if "Todos" in escenario_selected else ", ".join(escenario_selected),
-    }
-
-    summary_md = build_summary_markdown(
-        period_label,
-        agg_label,
-        filters_description,
-        kpi_data,
-        missing_logs,
-        len(filtered),
-    )
-    st.download_button(
-        "Descargar resumen (Markdown)",
-        summary_md.encode("utf-8"),
-        file_name="resumen_meteostat.md",
-        mime="text/markdown",
-    )
-
-    if show_distribution:
-        st.subheader("Distribución de temperatura y sensación térmica")
-        if filtered.empty:
-            st.info("No hay datos para el gráfico de distribución.")
+        start_date, end_date = date_range
+        period_start = filtered["Fecha"].min() if not filtered.empty else start_date
+        period_end = filtered["Fecha"].max() if not filtered.empty else end_date
+        if period_start == period_end:
+            period_label = f"{period_start:%Y/%m/%d}"
         else:
-            temp_traces = []
-            feel_traces = []
-            for city in cities_selected:
-                temp_values = pd.to_numeric(filtered.loc[filtered["Lugar"] == city, "temp"], errors="coerce").dropna()
-                feel_values = pd.to_numeric(filtered.loc[filtered["Lugar"] == city, "feels_like"], errors="coerce").dropna()
-                if not temp_values.empty:
-                    temp_traces.append((city, temp_values))
-                if not feel_values.empty:
-                    feel_traces.append((city, feel_values))
+            period_label = f"{period_start:%Y/%m/%d} al {period_end:%Y/%m/%d}"
+        st.markdown(f"*Indicadores agregados por ciudad ({agg_label}) sobre el periodo {period_label}.*")
 
-            if temp_traces or feel_traces:
-                fig_dist = make_subplots(rows=1, cols=2, shared_yaxes=True, subplot_titles=["Temp (°C)", "Feels like (°C)"])
-                for city, values in temp_traces:
-                    fig_dist.add_trace(go.Box(y=values, name=city, boxpoints="outliers"), row=1, col=1)
-                for city, values in feel_traces:
-                    fig_dist.add_trace(go.Box(y=values, name=city, boxpoints="outliers"), row=1, col=2)
-                fig_dist.update_layout(
-                    legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
-                    margin=dict(t=80, b=100, l=60, r=20),
-                )
-                st.plotly_chart(fig_dist, use_container_width=True, theme="streamlit")
+        if filtered.empty:
+            st.info("No hay datos con los filtros actuales.")
+        else:
+            granularity = determine_granularity(start_date, end_date)
+            aggregated = aggregate_series(filtered, agg_option, granularity)
+            if granularity == "monthly" and "Mes" in aggregated.columns and aggregated["Mes"].nunique() <= 1:
+                granularity = "daily"
+                aggregated = aggregate_series(filtered, agg_option, granularity)
+            kpi_data = kpis(filtered, agg_option)
+            missing_logs: List[str] = []
+
+            humidity_available = "humedad_%" in filtered.columns and filtered["humedad_%"].notna().any()
+            wind_available = "wspd_kmh" in filtered.columns and filtered["wspd_kmh"].notna().any()
+
+            missing_metrics = []
+            if not humidity_available:
+                missing_metrics.append("humedad")
+            if not wind_available:
+                missing_metrics.append("viento")
+            if missing_metrics:
+                st.warning("Faltan datos de {}. Se omiten los graficos relacionados.".format(" y ".join(missing_metrics)))
+
+            if kpi_data.empty:
+                st.info("No hay datos con los filtros actuales.")
             else:
-                st.info("No hay suficientes datos para el gráfico de distribución.")
+                summary_table = (
+                    kpi_data.rename(
+                        columns={
+                            "Lugar": "Ciudad",
+                            "Temp (°C)": "Temp (°C)",
+                            "Se siente (°C)": "Se siente (°C)",
+                            "Humedad_%": "Humedad (%)",
+                            "Viento (km/h)": "Viento (km/h)",
+                        }
+                    )
+                    .set_index("Ciudad")
+                    .applymap(lambda value: f"{value:.1f}" if pd.notna(value) else "-")
+                )
+                st.table(summary_table)
 
-            distribution_export = filtered[["datetime", "Lugar", "temp", "feels_like", "escenario"]].copy()
+            x_field_map = {
+                "monthly": ("Mes", "Mes"),
+                "daily": ("Fecha", "Fecha"),
+                "hourly": ("FechaHora", "Fecha y hora"),
+            }
+            x_field, x_axis_title = x_field_map[granularity]
+            if x_field not in aggregated.columns:
+                aggregated[x_field] = pd.Series(dtype=object)
+            x_sequence = format_axis_values(aggregated[x_field], granularity)
+            category_array = list(dict.fromkeys(x_sequence))
+
+            value_columns = [col for col in ["Temp (°C)", "Se siente (°C)"] if col in aggregated.columns]
+            has_temperature_data = bool(value_columns) and not aggregated[value_columns].dropna(how="all").empty
+
+            title_map = {
+                "monthly": "Evolucion mensual",
+                "daily": "Evolucion diaria",
+                "hourly": "Evolucion horaria",
+            }
+
+            if has_temperature_data:
+                fig = go.Figure()
+                for city in cities_selected:
+                    city_data = aggregated[aggregated["Lugar"] == city]
+                    if city_data.empty:
+                        continue
+                    x_values_city = format_axis_values(city_data[x_field], granularity)
+                    fig.add_trace(
+                        go.Scatter(
+                            x=x_values_city,
+                            y=city_data["Temp (°C)"],
+                            mode="lines+markers",
+                            name=f"{city} - Temp",
+                        )
+                    )
+                    fig.add_trace(
+                        go.Scatter(
+                            x=x_values_city,
+                            y=city_data["Se siente (°C)"],
+                            mode="lines+markers",
+                            line=dict(dash="dash"),
+                            name=f"{city} - Se siente",
+                        )
+                    )
+                fig.update_layout(
+                    title=f"{title_map[granularity]} - {agg_label}",
+                    xaxis_title=x_axis_title,
+                    yaxis_title="°C",
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+                    margin=dict(t=60, b=110, l=60, r=20),
+                    height=450,
+                )
+                fig.update_xaxes(categoryorder="array", categoryarray=category_array)
+                st.plotly_chart(fig, use_container_width=True, theme="streamlit")
+
+                delta_df = aggregated.copy()
+                delta_df["Delta (°C)"] = delta_df["Se siente (°C)"] - delta_df["Temp (°C)"]
+                delta_available = delta_df.dropna(subset=["Delta (°C)"])
+                if not delta_available.empty:
+                    fig_delta = go.Figure()
+                    for city in cities_selected:
+                        city_data = delta_available[delta_available["Lugar"] == city]
+                        if city_data.empty:
+                            continue
+                        x_values_city = format_axis_values(city_data[x_field], granularity)
+                        if granularity == "monthly":
+                            fig_delta.add_trace(go.Bar(x=x_values_city, y=city_data["Delta (°C)"], name=city))
+                        else:
+                            fig_delta.add_trace(
+                                go.Scatter(x=x_values_city, y=city_data["Delta (°C)"], mode="lines+markers", name=city)
+                            )
+                    fig_delta.update_layout(
+                        title="Diferencia Se siente vs Temp",
+                        xaxis_title=x_axis_title,
+                        yaxis_title="°C",
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+                        margin=dict(t=60, b=110, l=60, r=20),
+                        height=420,
+                    )
+                    fig_delta.update_xaxes(categoryorder="array", categoryarray=category_array)
+                    st.plotly_chart(fig_delta, use_container_width=True, theme="streamlit")
+            else:
+                st.info("Sin datos agregados para mostrar en el grafico de temperatura.")
+
+            if humidity_available and "Humedad_%" in aggregated.columns and aggregated["Humedad_%"].notna().any():
+                fig_humidity = go.Figure()
+                for city in cities_selected:
+                    city_data = aggregated[aggregated["Lugar"] == city]
+                    if city_data.empty or city_data["Humedad_%"].dropna().empty:
+                        continue
+                    x_values_city = format_axis_values(city_data[x_field], granularity)
+                    fig_humidity.add_trace(
+                        go.Scatter(x=x_values_city, y=city_data["Humedad_%"], mode="lines+markers", name=city)
+                    )
+                if fig_humidity.data:
+                    fig_humidity.update_layout(
+                        title="Evolucion de la humedad",
+                        xaxis_title=x_axis_title,
+                        yaxis_title="%",
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+                        margin=dict(t=60, b=110, l=60, r=20),
+                        height=420,
+                    )
+                    fig_humidity.update_xaxes(categoryorder="array", categoryarray=category_array)
+                    st.plotly_chart(fig_humidity, use_container_width=True, theme="streamlit")
+
+            if wind_available and "Viento (km/h)" in aggregated.columns and aggregated["Viento (km/h)"].notna().any():
+                fig_wind = go.Figure()
+                for city in cities_selected:
+                    city_data = aggregated[aggregated["Lugar"] == city]
+                    if city_data.empty or city_data["Viento (km/h)"].dropna().empty:
+                        continue
+                    x_values_city = format_axis_values(city_data[x_field], granularity)
+                    fig_wind.add_trace(
+                        go.Scatter(x=x_values_city, y=city_data["Viento (km/h)"], mode="lines+markers", name=city)
+                    )
+                if fig_wind.data:
+                    fig_wind.update_layout(
+                        title="Evolucion del viento",
+                        xaxis_title=x_axis_title,
+                        yaxis_title="km/h",
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+                        margin=dict(t=60, b=110, l=60, r=20),
+                        height=420,
+                    )
+                    fig_wind.update_xaxes(categoryorder="array", categoryarray=category_array)
+                    st.plotly_chart(fig_wind, use_container_width=True, theme="streamlit")
+
+            if value_columns:
+                missing_rows = aggregated[aggregated[value_columns].isna().all(axis=1)]
+                for _, missing in missing_rows.iterrows():
+                    raw_value = missing.get(x_field)
+                    if pd.isna(raw_value):
+                        label = "sin tiempo"
+                    else:
+                        labels = format_axis_values(pd.Series([raw_value]), granularity)
+                        label = labels[0] if labels else str(raw_value)
+                    missing_logs.append(f"Sin datos para {missing['Lugar']} en {label} con los filtros actuales")
+
+            if not aggregated.empty:
+                suffix_map = {"monthly": "mensual", "daily": "diario", "hourly": "horario"}
+                file_suffix = suffix_map[granularity]
+                st.download_button(
+                    f"Descargar datos agregados ({file_suffix})",
+                    aggregated.to_csv(index=False).encode("utf-8"),
+                    file_name=f"datos_agregados_{file_suffix}.csv",
+                    mime="text/csv",
+                )
+
+            filters_description = {
+                "Meses": ", ".join(months_selected) if months_selected else "Todos",
+                "Horas": ", ".join(hours_selected) if hours_selected else "Todas",
+                "Ciudades": ", ".join(cities_selected) if cities_selected else "Todas",
+                "Escenarios": "Todos" if "Todos" in escenario_selected else ", ".join(escenario_selected),
+            }
+            summary_md = build_summary_markdown(
+                period_label,
+                agg_label,
+                filters_description,
+                kpi_data,
+                missing_logs,
+                len(filtered),
+            )
             st.download_button(
-                "Descargar datos de distribución (CSV)",
-                distribution_export.to_csv(index=False).encode("utf-8"),
-                file_name="distribucion.csv",
+                "Descargar resumen (Markdown)",
+                summary_md.encode("utf-8"),
+                file_name="resumen_meteostat.md",
+                mime="text/markdown",
+            )
+
+            if show_distribution:
+                st.subheader("Distribucion de temperatura y sensacion termica")
+                if filtered.empty:
+                    st.info("No hay datos para el grafico de distribucion.")
+                else:
+                    temp_traces = []
+                    feel_traces = []
+                    for city in cities_selected:
+                        temp_values = pd.to_numeric(filtered.loc[filtered["Lugar"] == city, "temp"], errors="coerce").dropna()
+                        feel_values = pd.to_numeric(filtered.loc[filtered["Lugar"] == city, "feels_like"], errors="coerce").dropna()
+                        if not temp_values.empty:
+                            temp_traces.append((city, temp_values))
+                        if not feel_values.empty:
+                            feel_traces.append((city, feel_values))
+
+                    if temp_traces or feel_traces:
+                        fig_dist = make_subplots(rows=1, cols=2, shared_yaxes=True, subplot_titles=["Temp (°C)", "Se siente (°C)"])
+                        for city, values in temp_traces:
+                            fig_dist.add_trace(go.Box(y=values, name=city, boxpoints="outliers"), row=1, col=1)
+                        for city, values in feel_traces:
+                            fig_dist.add_trace(go.Box(y=values, name=city, boxpoints="outliers"), row=1, col=2)
+                        fig_dist.update_layout(
+                            legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
+                            margin=dict(t=80, b=100, l=60, r=20),
+                        )
+                        st.plotly_chart(fig_dist, use_container_width=True, theme="streamlit")
+                    else:
+                        st.info("No hay suficientes datos para el grafico de distribucion.")
+
+                    if {"datetime", "Lugar", "temp", "feels_like", "escenario"}.issubset(filtered.columns):
+                        distribution_export = filtered[["datetime", "Lugar", "temp", "feels_like", "escenario"]].copy()
+                        st.download_button(
+                            "Descargar datos de distribucion (CSV)",
+                            distribution_export.to_csv(index=False).encode("utf-8"),
+                            file_name="distribucion.csv",
+                            mime="text/csv",
+                        )
+
+            if missing_logs:
+                with st.expander("Incidencias de datos", expanded=False):
+                    for message in sorted(set(missing_logs)):
+                        st.markdown(f"- {message}")
+
+            table_columns = ["datetime", "Lugar", "temp", "humedad_%", "wspd_kmh", "feels_like", "escenario"]
+            available_columns = [col for col in table_columns if col in filtered.columns]
+            table_df = filtered[available_columns].sort_values("datetime") if not filtered.empty else filtered[available_columns]
+
+            st.subheader("Datos crudos filtrados")
+            st.dataframe(table_df, use_container_width=True)
+            st.download_button(
+                "Descargar tabla filtrada (CSV)",
+                table_df.to_csv(index=False).encode("utf-8"),
+                file_name="datos_filtrados.csv",
                 mime="text/csv",
             )
-
-    if missing_logs:
-        with st.expander("Incidencias de datos", expanded=False):
-            for message in sorted(set(missing_logs)):
-                st.markdown(f"- {message}")
-
-    table_columns = ["datetime", "Lugar", "temp", "humedad_%", "wspd_kmh", "feels_like", "escenario"]
-    available_columns = [col for col in table_columns if col in filtered.columns]
-    table_df = filtered[available_columns].sort_values("datetime")
-
-    st.subheader("Datos crudos filtrados")
-    st.dataframe(table_df, use_container_width=True)
-    st.download_button(
-        "Descargar tabla filtrada (CSV)",
-        table_df.to_csv(index=False).encode("utf-8"),
-        file_name="datos_filtrados.csv",
-        mime="text/csv",
-    )
 
     st.sidebar.header("Carga de datos")
     st.sidebar.file_uploader("Archivo CSV (Meteostat Hourly)", type=["csv"], key="upload_csv")
