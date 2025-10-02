@@ -49,8 +49,11 @@ def render_sidebar(
         default=st.session_state.get("cities_filter", cities_all),
         key="cities_filter",
     )
-    if not cities_selected:
-        cities_selected = cities_all.copy()
+    if cities_selected:
+        st.session_state["cities_filter"] = cities_selected
+    else:
+        st.session_state["cities_filter"] = cities_all.copy()
+    cities_selected = st.session_state["cities_filter"]
 
     if cities_all:
         quick_container = st.sidebar.container()
@@ -114,11 +117,14 @@ def render_sidebar(
     months_selected = st.sidebar.multiselect(
         "Mes(es)",
         options=months_all,
-        default=st.session_state["months_filter"],
+        default=st.session_state.get("months_filter", months_all.copy()),
         key="months_filter",
     )
-    if not months_selected:
-        months_selected = months_all.copy()
+    if months_selected:
+        st.session_state["months_filter"] = months_selected
+    else:
+        st.session_state["months_filter"] = months_all.copy()
+    months_selected = st.session_state["months_filter"]
 
     st.sidebar.subheader("Horas")
     if "hours_filter" not in st.session_state:
@@ -140,11 +146,14 @@ def render_sidebar(
     hours_selected = st.sidebar.multiselect(
         "Hora(s)",
         options=hours_all,
-        default=st.session_state["hours_filter"],
+        default=st.session_state.get("hours_filter", hours_all.copy()),
         key="hours_filter",
     )
-    if not hours_selected:
-        hours_selected = hours_all.copy()
+    if hours_selected:
+        st.session_state["hours_filter"] = hours_selected
+    else:
+        st.session_state["hours_filter"] = hours_all.copy()
+    hours_selected = st.session_state["hours_filter"]
 
     st.sidebar.subheader("Escenarios")
     if "scenario_filter" not in st.session_state:
@@ -152,11 +161,14 @@ def render_sidebar(
     escenario_selected = st.sidebar.multiselect(
         "Escenario(s)",
         options=SCENARIO_OPTIONS,
-        default=st.session_state["scenario_filter"],
+        default=st.session_state.get("scenario_filter", ["Todos"]),
         key="scenario_filter",
     )
-    if not escenario_selected:
-        escenario_selected = ["Todos"]
+    if escenario_selected:
+        st.session_state["scenario_filter"] = escenario_selected
+    else:
+        st.session_state["scenario_filter"] = ["Todos"]
+    escenario_selected = st.session_state["scenario_filter"]
 
     show_distribution = st.sidebar.checkbox(
         "Mostrar gráfico de distribución", value=False, key="show_distribution_toggle"
