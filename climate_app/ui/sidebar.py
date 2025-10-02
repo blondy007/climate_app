@@ -123,18 +123,20 @@ def render_sidebar(
     )
 
     st.sidebar.subheader("Fechas y meses")
-    stored_range = st.session_state.get("date_range_filter", initial_range)
-    normalized_range = _normalize_date_range(stored_range, initial_range)
+    stored_range = _normalize_date_range(
+        st.session_state.get("date_range_filter", initial_range), initial_range
+    )
     date_input_value = st.sidebar.date_input(
         "Rango de fechas",
-        value=normalized_range,
+        value=stored_range,
         min_value=min_downloadable_date,
         max_value=today,
         format="YYYY/MM/DD",
         key="date_range_filter",
     )
-    date_filter_value = _normalize_date_range(date_input_value, normalized_range)
-    st.session_state["date_range_filter"] = date_filter_value
+    date_filter_value = _normalize_date_range(date_input_value, stored_range)
+    if st.session_state.get("date_range_filter") != date_filter_value:
+        st.session_state["date_range_filter"] = date_filter_value
 
     _sanitize_state("months_filter", months_all)
     month_buttons = st.sidebar.columns(4)
