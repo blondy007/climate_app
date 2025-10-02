@@ -6,6 +6,7 @@ import pandas as pd
 from climate_app.data.meteostat_client import fetch_station_hourly
 from climate_app.data.master_repo import load_master_csv, save_master_csv
 from climate_app.data.transformations import normalize_meteostat_df
+from climate_app.shared.utils import canonical_station_id
 
 
 def append_station_to_master(
@@ -43,3 +44,18 @@ def append_station_to_master(
 
     save_master_csv(combined)
     return new_rows
+
+
+
+def remove_station_from_master(station_id: str) -> int:
+    canonical = canonical_station_id(station_id)
+    df = load_master_csv()
+    if df.empty or "station" not in df.columns:
+        return 0
+    mask = df["station"].astype(str) == canonical
+    removed_rows = int(mask.sum())
+    if removed_rows == 0:
+        return 0
+    remaining = df.loc[~mask].copy()
+    save_master_csv(remaining)
+    return removed_rows

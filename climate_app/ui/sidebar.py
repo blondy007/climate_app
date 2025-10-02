@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 from datetime import date, datetime, timedelta
 from typing import Dict, Tuple
 
@@ -10,7 +10,7 @@ from climate_app.data.meteostat_client import get_station_metadata, search_stati
 from climate_app.data.thresholds_repo import save_wind_thresholds
 from climate_app.services.analytics import AGG_FUNCTIONS, AGG_LABELS
 from climate_app.services.filters import parse_date_range
-from climate_app.services.stations import append_station_to_master
+from climate_app.services.stations import append_station_to_master, remove_station_from_master
 from climate_app.services.wind import build_thresholds
 from climate_app.shared.constants import COUNTRY_OPTIONS, MONTH_NAME_TO_NUM, SCENARIO_OPTIONS
 from climate_app.shared.models import FilterSelections
@@ -283,6 +283,29 @@ def render_sidebar(
         if st.sidebar.button("Actualizar estación existente", key="btn_update_existing_station"):
             station_id_existing, station_name_existing = existing_options_map[existing_label]
             enqueue_station_download(station_id_existing, station_name_existing)
+
+        st.sidebar.markdown("#### Eliminar estación del maestro")
+        remove_label = st.sidebar.selectbox(
+            "Estación a eliminar",
+            options=sorted(existing_options_map.keys()),
+            key="remove_station_select",
+        )
+        if st.sidebar.button("Eliminar estación", key="btn_remove_station"):
+            station_id_remove, _ = existing_options_map[remove_label]
+            removed_rows = remove_station_from_master(station_id_remove)
+            if removed_rows > 0:
+                st.session_state["add_station_feedback"] = (
+                    "success",
+                    f"Se eliminaron {removed_rows} filas de la estación {station_id_remove}.",
+                )
+            else:
+                st.session_state["add_station_feedback"] = (
+                    "info",
+                    f"No se encontraron datos de la estación {station_id_remove} para eliminar.",
+                )
+            st.session_state.pop("station_search_results", None)
+            load_master_csv.clear()
+            st.rerun()
 
     st.sidebar.header("Configuración de umbrales")
     thresholds_map: Dict[str, Dict[str, float]] = {}
