@@ -1,0 +1,39 @@
+name: Oracle Deploy
+
+on:
+  push:
+    branches:
+      - oracle-production
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: oracle-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Trigger private Coolify deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:ci
+          ping: 100.120.251.18
+
+      - name: Trigger deployment
+        env:
+          COOLIFY_DEPLOY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
+          COOLIFY_APPLICATION_UUID: xk53thwe7wzp3wah1qxvttvg
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer ${COOLIFY_DEPLOY_TOKEN}" \
+            "http://100.120.251.18:8000/api/v1/applications/${COOLIFY_APPLICATION_UUID}/start?force=false"
