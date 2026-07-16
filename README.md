@@ -15,6 +15,16 @@
 ## Ejecución
 - `streamlit run app.py`
 
+## Docker
+
+La imagen escucha en el puerto `8501` y expone el healthcheck de Streamlit en
+`/_stcore/health`.
+
+El directorio `/app/data` contiene el CSV maestro y los umbrales modificables.
+Debe montarse como volumen persistente. Cuando el volumen está vacío, el
+entrypoint copia los datos iniciales incluidos en la imagen; nunca sobrescribe
+datos existentes durante un redeploy.
+
 ## Funcionalidades
 - Carga automática del CSV Meteostat por defecto y soporte para archivos subidos con el mismo esquema.
 - Filtros por fechas, meses, horas, ciudades y escenarios, con opción "Todos" para mantener todos los registros.
