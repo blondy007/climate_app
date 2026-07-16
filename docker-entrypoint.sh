@@ -16,4 +16,3 @@ exec streamlit run app.py \
   --server.port="${PORT:-8501}" \
   --server.headless=true \
   --browser.gatherUsageStats=false
-
