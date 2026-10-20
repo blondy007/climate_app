@@ -11,7 +11,7 @@ Referencias visuales consultadas el 20 de octubre de 2026:
 
 La implementación conserva Streamlit y los servicios existentes. Usa una paleta
 costera de azul petróleo, fondos claros u oscuros y acentos cálidos, tipografía del sistema,
-tarjetas adaptables y SVG originales locales. No añade bibliotecas, cuotas,
+secciones abiertas y SVG originales locales. No añade bibliotecas, cuotas,
 recursos remotos de diseño ni suscripciones.
 
 ## Navegación
@@ -24,7 +24,7 @@ recursos remotos de diseño ni suscripciones.
 - Ajustes: apariencia, gestión de lugares, cuenta personal, fuentes y licencias.
 
 El selector Automático / Claro / Oscuro recuerda la elección por navegador.
-El modo automático sigue el dispositivo; tarjetas, formularios, navegación y
+El modo automático sigue el dispositivo; secciones, formularios, navegación y
 gráficos comparten la paleta. La gestión muestra cada lugar con su botón Quitar,
 y un apartado de lugares quitados permite recuperarlo conservando su archivo.
 El aviso de retirada ofrece Deshacer. Los alias distinguen sitios con nombres
@@ -34,8 +34,9 @@ el botón desplaza directamente a Tus lugares.
 
 Las filas diarias son botones accesibles con teclado y área táctil completa.
 El contenedor Markdown de cada fila elimina el margen negativo de Streamlit
-para que contenido, botón, fondo y borde tengan la misma altura. El resaltado
-seleccionado y el foco se dibujan hacia dentro y no invaden los días contiguos.
+para que contenido, botón y fondo tengan la misma altura. El resaltado seleccionado
+usa un fondo tenue y una marca lateral. El foco de teclado se dibuja hacia dentro
+y no invade los días contiguos.
 Al elegir una se resaltan y se abre su franja horaria, con vuelta a las próximas
 24 horas. Solo aparecen las horas disponibles del día y horizonte elegidos.
 Los cambios de lugar o modelo reinician la selección; un horizonte que ya no
@@ -61,7 +62,15 @@ Streamlit se actualiza de 1.37.0 a 1.38.0 para corregir el fallo de su árbol de
 bloques que podía dejar la pantalla en blanco al cambiar la vista
 ([corrección oficial](https://github.com/streamlit/streamlit/pull/9276)).
 
-En móvil la navegación queda al alcance del pulgar en la parte inferior. Los
+La previsión usa un lienzo continuo: horas y días no tienen marco, y viento,
+humedad y lluvia se leen como una lista de datos con separadores finos. Los
+gráficos, indicadores del histórico y conclusiones también prescinden de cajas
+decorativas. La tarjeta principal conserva la ilustración y el color del cielo;
+los campos de formulario mantienen su contorno para reconocerlos como controles.
+La primera hora no lleva un resaltado que pueda confundirse con una selección.
+
+En móvil la navegación queda al alcance del pulgar en una barra inferior continua,
+con icono y texto activos en color, sin tarjetas dentro de una tarjeta. Los
 controles conservan interacción de teclado y foco visible. Las horas se presentan
 en la zona del lugar. Los textos del usuario se escapan antes de generar HTML.
 
