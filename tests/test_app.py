@@ -29,19 +29,27 @@ class AppTests(unittest.TestCase):
                 self.assertEqual(len(app.exception), 0, str(app.exception))
                 model = next(select for select in app.selectbox if select.label == "Previsión principal")
                 self.assertNotIn("Google WeatherNext 3", model.options)
+                self.assertFalse(any(button.label == "Guardar lugar" for button in app.button))
                 app.text_input(key="owner_username").set_value("test-owner")
                 app.text_input(key="owner_password").set_value(test_password)
                 next(button for button in app.button if button.label == "Entrar").click().run(timeout=30)
                 self.assertEqual(len(app.exception), 0, str(app.exception))
                 model = next(select for select in app.selectbox if select.label == "Previsión principal")
                 self.assertIn("Google WeatherNext 3", model.options)
+                self.assertTrue(any(button.label == "Guardar coordenadas" for button in app.button))
                 model.set_value("weathernext3").run(timeout=30)
                 self.assertEqual(len(app.exception), 0, str(app.exception))
                 self.assertTrue(any("30" in metric.value for metric in app.metric))
+                with patch("climate_app.ui.sidebar.save_wind_thresholds") as save_thresholds:
+                    app.radio(key="main_view").set_value("📊 Histórico").run(timeout=30)
+                    save_thresholds.assert_called_once()
+                self.assertTrue(any(button.label == "Eliminar estación" for button in app.button))
+                app.radio(key="main_view").set_value("🌤️ Previsión").run(timeout=30)
                 next(button for button in app.button if button.label == "Cerrar sesión").click().run(timeout=30)
                 self.assertEqual(len(app.exception), 0, str(app.exception))
                 model = next(select for select in app.selectbox if select.label == "Previsión principal")
                 self.assertNotIn("Google WeatherNext 3", model.options)
+                self.assertFalse(any(button.label == "Guardar coordenadas" for button in app.button))
 
     def test_forecast_and_empty_evaluation_render_without_network(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -61,8 +69,11 @@ class AppTests(unittest.TestCase):
                 self.assertTrue(any("20" in metric.value for metric in app.metric))
                 app.radio(key="main_view").set_value("🎯 Aciertos").run(timeout=30)
                 self.assertEqual(len(app.exception), 0, str(app.exception))
-                app.radio(key="main_view").set_value("📊 Histórico").run(timeout=30)
+                with patch("climate_app.ui.sidebar.save_wind_thresholds") as save_thresholds:
+                    app.radio(key="main_view").set_value("📊 Histórico").run(timeout=30)
+                    save_thresholds.assert_not_called()
                 self.assertEqual(len(app.exception), 0, str(app.exception))
+                self.assertFalse(any(button.label == "Eliminar estación" for button in app.button))
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@ from climate_app.services.wind import build_thresholds
 from climate_app.shared.constants import COUNTRY_OPTIONS, MONTH_NAME_TO_NUM, SCENARIO_OPTIONS
 from climate_app.shared.models import FilterSelections
 from climate_app.shared.utils import canonical_station_id
+from climate_app.auth import authenticated
 
 def _normalize_date_range(value, default_range):
     parsed = parse_date_range(value)
@@ -51,7 +52,6 @@ def _multiselect_with_state(
         label,
         options=available,
         key=widget_key,
-        default=st.session_state.get(widget_key, current_state),
     )
     selection = [item for item in selection if item in available]
     if not selection and base:
@@ -205,6 +205,19 @@ def render_sidebar(
     show_distribution = st.sidebar.checkbox(
         "Mostrar gráfico de distribución", value=False, key="show_distribution_toggle"
     )
+
+    filters = FilterSelections(
+        cities=cities_selected,
+        agg_option=agg_option,
+        raw_date_value=date_filter_value,
+        months=months_selected,
+        hours=hours_selected,
+        scenarios=escenario_selected,
+        show_distribution=show_distribution,
+    )
+    if not authenticated():
+        st.sidebar.caption("Inicia sesión para gestionar estaciones y umbrales compartidos.")
+        return filters, sidebar_threshold_defaults
 
     st.sidebar.header("Gestión de estaciones")
     station_query = st.sidebar.text_input("Nombre o ciudad", key="station_query")
@@ -374,16 +387,6 @@ def render_sidebar(
     updated_thresholds = stored_thresholds.copy()
     updated_thresholds.update(thresholds_map)
     save_wind_thresholds(updated_thresholds)
-
-    filters = FilterSelections(
-        cities=cities_selected,
-        agg_option=agg_option,
-        raw_date_value=date_filter_value,
-        months=months_selected,
-        hours=hours_selected,
-        scenarios=escenario_selected,
-        show_distribution=show_distribution,
-    )
 
     return filters, thresholds_map
 

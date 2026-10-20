@@ -40,6 +40,10 @@ ventana de 15 minutos mediante un contador persistente y atómico.
 No hay contraseña por defecto ni registro abierto. Sin cuenta configurada,
 WeatherNext y el consenso privado permanecen ocultos.
 
+La gestión de lugares, estaciones históricas y umbrales compartidos exige también
+esa sesión. Los visitantes pueden consultar y filtrar las fuentes abiertas sin
+modificar el archivo común ni consumir el cupo de lugares.
+
 ## Frecuencia y coste
 
 - Open-Meteo y MET Norway: cada 3 horas; WeatherNext: cada hora si está configurado.
@@ -72,6 +76,12 @@ variable y plazo. Hasta tener 30 muestras en tres días por cada contribuyente
 aplica pesos iguales. Los pesos inversos al MAE están regularizados; los datos
 ausentes se omiten. El consenso se archiva para evaluar también sus propios aciertos.
 El desacuerdo entre modelos no se presenta como intervalo probabilístico.
+
+WeatherNext conserva por cada hora la pasada nativa de superficie y temperatura,
+y las coordenadas de sus celdas. Así se distinguen las ejecuciones horarias de
+48 horas de las sinópticas que cubren hasta 15 días. La procedencia se guarda en
+una tabla aditiva; la tabla de puntos original sigue siendo compatible con rollback.
+La evaluación lee el archivo sin repetir el JSON de cada ejecución por cada hora.
 
 ## Backup, restauración y despliegue
 

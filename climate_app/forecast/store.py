@@ -32,6 +32,13 @@ CREATE TABLE IF NOT EXISTS points (
  PRIMARY KEY(run_id,valid_time));
 CREATE INDEX IF NOT EXISTS runs_lookup ON runs(location_id,provider,fetched_at);
 CREATE INDEX IF NOT EXISTS points_time ON points(valid_time);
+CREATE TABLE IF NOT EXISTS point_sources (
+ run_id INTEGER NOT NULL, valid_time TEXT NOT NULL,
+ source_init_time TEXT, temperature_init_time TEXT,
+ surface_latitude REAL, surface_longitude REAL,
+ temperature_latitude REAL, temperature_longitude REAL,
+ PRIMARY KEY(run_id,valid_time),
+ FOREIGN KEY(run_id,valid_time) REFERENCES points(run_id,valid_time));
 CREATE TABLE IF NOT EXISTS observations (
  location_id TEXT NOT NULL, valid_time TEXT NOT NULL, station_id TEXT NOT NULL,
  fetched_at TEXT NOT NULL, temperature REAL, humidity REAL, precipitation REAL,
@@ -45,6 +52,8 @@ PRAGMA user_version=1;
 """
 POINT_COLUMNS = ("temperature", "humidity", "precipitation", "wind_speed", "wind_direction",
                  "wind_gust", "cloud_cover", "precip_probability", "temperature_p10", "temperature_p90")
+SOURCE_TIME_COLUMNS = ("source_init_time", "temperature_init_time")
+SOURCE_COORDINATES = ("surface_latitude", "surface_longitude", "temperature_latitude", "temperature_longitude")
 
 
 class Store:
@@ -130,11 +139,25 @@ class Store:
             conn.executemany("INSERT INTO points VALUES (" + ",".join("?" for _ in range(12)) + ")",
                 [(cursor.lastrowid, stamp(p["valid_time"]), *[finite(p.get(col)) for col in POINT_COLUMNS])
                  for p in points])
+            # Optional provenance lives in a separate table so older releases can
+            # still read and write their original 12-column points table on rollback.
+            conn.executemany("INSERT INTO point_sources VALUES (?,?,?,?,?,?,?,?)",
+                [(cursor.lastrowid, stamp(p["valid_time"]),
+                  *[stamp(p[col]) if p.get(col) is not None else None for col in SOURCE_TIME_COLUMNS],
+                  *[finite(p.get(col)) for col in SOURCE_COORDINATES])
+                 for p in points if any(p.get(col) is not None for col in SOURCE_TIME_COLUMNS)])
 
     def forecasts(self, location_id, since=None, latest=True) -> pd.DataFrame:
         since = stamp(since or utcnow() - timedelta(days=90))
-        sql = """SELECT r.location_id,r.provider,r.fetched_at,r.init_time,r.metadata,p.*
-                 FROM runs r JOIN points p ON p.run_id=r.id WHERE r.location_id=? AND p.valid_time>=?"""
+        # Evaluation never needs the run's JSON. Avoid duplicating it for every
+        # hourly point across months of archive, especially ensemble weight details.
+        metadata = ",r.metadata" if latest else ""
+        sql = f"""SELECT r.location_id,r.provider,r.fetched_at,r.init_time{metadata},p.*,
+                 q.source_init_time,q.temperature_init_time,q.surface_latitude,q.surface_longitude,
+                 q.temperature_latitude,q.temperature_longitude
+                 FROM runs r JOIN points p ON p.run_id=r.id
+                 LEFT JOIN point_sources q ON q.run_id=p.run_id AND q.valid_time=p.valid_time
+                 WHERE r.location_id=? AND p.valid_time>=?"""
         args = [location_id, since]
         if latest:
             # One complete snapshot per provider; never splice an old tail into a fresh run.
@@ -142,7 +165,7 @@ class Store:
             args.append(location_id)
         with self.connect() as conn:
             df = pd.read_sql_query(sql + " ORDER BY p.valid_time", conn, params=args)
-        for column in ("valid_time", "fetched_at", "init_time"):
+        for column in ("valid_time", "fetched_at", "init_time", *SOURCE_TIME_COLUMNS):
             df[column] = pd.to_datetime(df[column], utc=True)
         return df
 

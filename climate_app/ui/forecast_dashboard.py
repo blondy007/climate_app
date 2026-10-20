@@ -52,6 +52,9 @@ def configure_figure(fig, title, unit, height=330):
 
 
 def location_controls(store):
+    if not private_view():
+        st.caption("Inicia sesión para añadir o gestionar los lugares compartidos.")
+        return
     with st.expander("Añadir o gestionar lugares"):
         st.caption("Hasta 10 lugares activos. Las ubicaciones y sus previsiones se guardan entre visitas.")
         with st.form("search_forecast_place"):
@@ -215,6 +218,10 @@ def forecast_view(store, location, frame):
     with st.expander("Tabla horaria y descarga"):
         export = main[["valid_time", "temperature", "humidity", "precipitation", "wind_speed", "wind_direction", "wind_gust", "precip_probability"]].copy()
         export["valid_time"] = export.valid_time.dt.tz_convert(location.timezone)
+        for source, label in (("source_init_time", "Pasada superficie (UTC)"),
+                              ("temperature_init_time", "Pasada temperatura (UTC)")):
+            if source in main and main[source].notna().any():
+                export[label] = main[source]
         st.dataframe(export.rename(columns={"valid_time": "Hora local", **{key: value[0] for key, value in METRICS.items()}}), use_container_width=True, hide_index=True)
         if provider != "weathernext3":
             st.download_button("Descargar CSV", export.to_csv(index=False).encode("utf-8-sig"), "climateapp-prevision.csv", "text/csv")

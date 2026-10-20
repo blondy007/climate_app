@@ -29,12 +29,15 @@ STATUS = """
 import json,sqlite3
 from climate_app.forecast.store import Store
 from climate_app.health import main as health
+from climate_app.auth import owner_config, HTTPS_MARKER
 health()
 s=Store()
 with s.connect() as c:
     counts={t:c.execute('SELECT count(*) FROM '+t).fetchone()[0] for t in ['locations','runs','points','observations']}
     counts['integrity']=c.execute('PRAGMA integrity_check').fetchone()[0]
-print(json.dumps({'composite_health':'ok','counts':counts,'collector':s.state('collector'),
+print(json.dumps({'composite_health':'ok','counts':counts,
+ 'owner_login_configured':bool(owner_config()),'https_login_verified':HTTPS_MARKER.is_file(),
+ 'collector':s.state('collector'),
  'providers':{l.name:{p:s.state('task:'+l.id+':'+p,{}).get('status') for p in ['ecmwf','icon','gfs','metno','weathernext3','observations','climate']} for l in s.locations()}}))
 """
 
@@ -64,7 +67,11 @@ assert counts['runs']>0 and counts['points']>0 and counts['observations']>0
 c.close()
 historical=restored/'meteostat_master.csv'
 assert historical.exists() and historical.stat().st_size>100
-print(json.dumps({'restore':'ok','isolated_directory':str(root),'archive_bytes':archive.stat().st_size,'counts':counts,'historical_csv_bytes':historical.stat().st_size}))
+owner=s.path.parent/'auth-owner.json'
+owner_restored=owner.is_file() and (restored/owner.name).read_bytes()==owner.read_bytes()
+if owner.is_file(): assert owner_restored
+print(json.dumps({'restore':'ok','isolated_directory':str(root),'archive_bytes':archive.stat().st_size,
+ 'counts':counts,'historical_csv_bytes':historical.stat().st_size,'owner_account_restored':owner_restored}))
 """
 
 

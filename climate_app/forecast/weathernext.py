@@ -6,7 +6,7 @@ import os
 import re
 from datetime import timedelta
 
-from climate_app.forecast.domain import Forecast, ProviderError, finite, instant, utcnow
+from climate_app.forecast.domain import Forecast, ProviderError, finite, utcnow
 
 
 def settings():
@@ -35,27 +35,39 @@ def query_sql(dataset: str) -> str:
     # actually covers each valid hour (interim runs only cover 48 hours).
     return f"""
     WITH surface AS (
-      SELECT t.init_time, t.geography, f.*
+      SELECT t.init_time, t.geography, f.time,
+        f.temperature_2m_p50, f.temperature_2m_p10, f.temperature_2m_p90,
+        f.dewpoint_temperature_2m_p50, f.wind_speed_10m_p50,
+        f.u_component_of_wind_10m_mean, f.v_component_of_wind_10m_mean,
+        f.total_precipitation_1hr_mean, f.total_cloud_cover_p50
       FROM `{dataset}.weathernext_3_0_0_0p1deg` t, UNNEST(t.forecast) f
       WHERE t.init_time BETWEEN @cutoff AND @now
+        AND ST_DWITHIN(t.geography, ST_GEOGPOINT(@lon,@lat), 20000)
         AND ST_INTERSECTS(t.geography_polygon, ST_GEOGPOINT(@lon,@lat))
         AND f.time > @now AND f.time <= TIMESTAMP_ADD(@now, INTERVAL 360 HOUR)
       QUALIFY ROW_NUMBER() OVER (PARTITION BY f.time ORDER BY t.init_time DESC,
         ST_DISTANCE(t.geography,ST_GEOGPOINT(@lon,@lat)))=1
     ), station AS (
-      SELECT t.init_time, f.*
+      SELECT t.init_time, t.geography, f.time,
+        f.station_head_temperature_2m_p50, f.station_head_temperature_2m_p10,
+        f.station_head_temperature_2m_p90, f.station_head_dewpoint_temperature_2m_p50
       FROM `{dataset}.weathernext_3_0_0_0p05deg` t, UNNEST(t.forecast) f
       WHERE t.init_time BETWEEN @cutoff AND @now
+        AND ST_DWITHIN(t.geography, ST_GEOGPOINT(@lon,@lat), 20000)
         AND ST_INTERSECTS(t.geography_polygon, ST_GEOGPOINT(@lon,@lat))
         AND f.time > @now AND f.time <= TIMESTAMP_ADD(@now, INTERVAL 360 HOUR)
       QUALIFY ROW_NUMBER() OVER (PARTITION BY f.time ORDER BY t.init_time DESC,
         ST_DISTANCE(t.geography,ST_GEOGPOINT(@lon,@lat)))=1
     )
-    SELECT s.time, s.init_time, h.init_time AS station_init_time,
-      COALESCE(h.station_head_temperature_2m_p50,s.temperature_2m_p50) AS temp_k,
-      COALESCE(h.station_head_temperature_2m_p10,s.temperature_2m_p10) AS temp_p10_k,
-      COALESCE(h.station_head_temperature_2m_p90,s.temperature_2m_p90) AS temp_p90_k,
-      COALESCE(h.station_head_dewpoint_temperature_2m_p50,s.dewpoint_temperature_2m_p50) AS dew_k,
+    SELECT s.time, s.init_time,
+      IF(h.station_head_temperature_2m_p50 IS NOT NULL,h.init_time,s.init_time) AS temperature_init_time,
+      ST_Y(s.geography) AS surface_latitude, ST_X(s.geography) AS surface_longitude,
+      ST_Y(IF(h.station_head_temperature_2m_p50 IS NOT NULL,h.geography,s.geography)) AS temperature_latitude,
+      ST_X(IF(h.station_head_temperature_2m_p50 IS NOT NULL,h.geography,s.geography)) AS temperature_longitude,
+      IF(h.station_head_temperature_2m_p50 IS NOT NULL,h.station_head_temperature_2m_p50,s.temperature_2m_p50) AS temp_k,
+      IF(h.station_head_temperature_2m_p50 IS NOT NULL,h.station_head_temperature_2m_p10,s.temperature_2m_p10) AS temp_p10_k,
+      IF(h.station_head_temperature_2m_p50 IS NOT NULL,h.station_head_temperature_2m_p90,s.temperature_2m_p90) AS temp_p90_k,
+      IF(h.station_head_temperature_2m_p50 IS NOT NULL,h.station_head_dewpoint_temperature_2m_p50,s.dewpoint_temperature_2m_p50) AS dew_k,
       s.wind_speed_10m_p50 AS wind_mps,
       s.u_component_of_wind_10m_mean AS u, s.v_component_of_wind_10m_mean AS v,
       s.total_precipitation_1hr_mean AS precip_m,
@@ -80,6 +92,10 @@ def parse_rows(rows, fetched_at=None) -> Forecast:
                                                      - 17.625 * temp / (243.04 + temp))))
         u, v = finite(row.get("u")), finite(row.get("v"))
         point = {"valid_time": row["time"], "temperature": temp, "humidity": humidity}
+        point["source_init_time"] = row.get("init_time")
+        point["temperature_init_time"] = row.get("temperature_init_time", row.get("init_time"))
+        for coordinate in ("surface_latitude", "surface_longitude", "temperature_latitude", "temperature_longitude"):
+            point[coordinate] = finite(row.get(coordinate))
         for source, target, scale, offset in (
             ("temp_p10_k", "temperature_p10", 1, -273.15),
             ("temp_p90_k", "temperature_p90", 1, -273.15),

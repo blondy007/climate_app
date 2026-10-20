@@ -33,8 +33,9 @@ pruebas de pago, recursos OCI ni APIs comerciales.
   observaciones reales, referencia de cinco años, evaluación, consenso y login.
 - Prueba real aislada: cuatro modelos y unas 43.000 observaciones por cada uno
   de los dos lugares, con datos recientes y backup SQLite consistente.
-- 23 pruebas pasan, incluyendo login/logout, aislamiento de WeatherNext, histórico,
-  errores, consenso, unidades, filtrado de modelos, cuotas y restauración SQLite.
+- 29 pruebas pasan, incluyendo login/logout, aislamiento de WeatherNext, histórico,
+  errores, consenso, unidades, filtrado de modelos, cuotas, límites de BigQuery y
+  restauración SQLite con procedencia por hora y compatibilidad de rollback.
 - APIs reales verificadas: ECMWF, ICON, GFS y MET Norway. GFS ofrece probabilidad
   de precipitación; no se inventa en fuentes que no la suministran.
 - Preliminar desplegada en Oracle: `720e9a4`, build ARM64, HTTPS válido y redirección
@@ -43,9 +44,13 @@ pruebas de pago, recursos OCI ni APIs comerciales.
   86.846 observaciones), CSV original de 4.611.430 bytes conservado.
 - GitHub Actions valida las 23 pruebas, pero el trigger de la API Coolify devuelve
   403. Se utilizó el fallback manual autorizado (`bg5ukmw5y35t4h0hcgax3wa7`).
-- Ajustando leyendas y tablas tras verificar la pantalla móvil de 390 px.
-- Pendiente: monitor/catálogo HTTPS, documentar infraestructura y configurar la
-  cuenta del propietario sin exponer ni pedir su contraseña en el chat.
+- Preliminar posterior `5788d89` verificada en móvil de 390 px, con leyendas y
+  tablas adaptadas. Monitor HTTPS Up; infraestructura documentada y publicada.
+- Cuenta del propietario configurada y verificada sin mostrar contraseña ni hash.
+- La gestión de lugares, estaciones y umbrales requiere la sesión personal;
+  las consultas y filtros de las fuentes abiertas siguen accesibles públicamente.
+- La siguiente revisión conserva la pasada y celda nativas por cada hora de
+  WeatherNext y evita replicar metadatos JSON al evaluar meses de archivo.
 - El propietario rechazó Tailscale para acceder a la app: se implementa login en
   la web HTTPS. Tailscale queda reservado a administración de la VPS.
 - Pendiente externo: acceso WeatherNext aprobado y credenciales de runtime

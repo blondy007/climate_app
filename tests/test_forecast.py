@@ -81,6 +81,35 @@ class StorageTests(unittest.TestCase):
         self.assertEqual(len(self.store.locations(include_inactive=True)), 1)
         self.assertEqual(self.store.add_location("Madrid", 40.4, -3.7), self.location)
 
+    def test_native_run_and_grid_provenance_survives_snapshot_restore(self):
+        point = dict(valid_time=NOW + timedelta(hours=1), temperature=20,
+                     source_init_time=NOW - timedelta(hours=1),
+                     temperature_init_time=NOW - timedelta(hours=2),
+                     surface_latitude=40.45, surface_longitude=-3.45,
+                     temperature_latitude=40.475, temperature_longitude=-3.475)
+        self.store.save_forecast(self.location, Forecast("weathernext3", NOW, [point]))
+        restored = Store(self.store.backup())
+        archived = restored.forecasts(self.location, since=NOW, latest=False)
+        row = archived.iloc[0]
+        self.assertEqual(row.source_init_time, NOW - timedelta(hours=1))
+        self.assertEqual(row.temperature_init_time, NOW - timedelta(hours=2))
+        self.assertEqual(row.surface_latitude, 40.45)
+        self.assertEqual(row.temperature_longitude, -3.475)
+        self.assertNotIn("metadata", archived.columns)
+
+    def test_old_release_can_still_insert_twelve_column_points(self):
+        self.store.save_forecast(self.location, Forecast("gfs", NOW,
+            [dict(valid_time=NOW + timedelta(hours=1), temperature=20)]))
+        with self.store.connect() as connection:
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 1)
+            self.assertEqual(len(connection.execute("PRAGMA table_info(points)").fetchall()), 12)
+            run_id = connection.execute("SELECT id FROM runs LIMIT 1").fetchone()[0]
+            connection.execute("INSERT INTO points VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                (run_id, (NOW + timedelta(hours=2)).isoformat(), 21, *[None] * 9))
+        row = self.store.forecasts(self.location, since=NOW).iloc[-1]
+        self.assertEqual(row.temperature, 21)
+        self.assertTrue(pd.isna(row.source_init_time))
+
 
 class ProviderTests(unittest.TestCase):
     def test_metno_rain_is_aligned_with_end_of_interval(self):
@@ -114,6 +143,20 @@ class ProviderTests(unittest.TestCase):
         self.assertAlmostEqual(point["precipitation"], 2)
         self.assertAlmostEqual(point["cloud_cover"], 50)
         self.assertNotIn("precip_probability", point)
+
+    def test_weathernext_keeps_different_native_runs_per_valid_hour(self):
+        surface = NOW - timedelta(hours=1)
+        station = NOW - timedelta(hours=2)
+        rows = [dict(time=NOW + timedelta(hours=1), init_time=surface,
+                     temperature_init_time=station, temp_k=293.15,
+                     surface_latitude=40.45, temperature_latitude=40.475),
+                dict(time=NOW + timedelta(days=5), init_time=NOW - timedelta(hours=6),
+                     temperature_init_time=NOW - timedelta(hours=6), temp_k=292.15)]
+        result = parse_rows(rows, NOW)
+        self.assertEqual(result.points[0]["source_init_time"], surface)
+        self.assertEqual(result.points[0]["temperature_init_time"], station)
+        self.assertEqual(result.points[0]["temperature_latitude"], 40.475)
+        self.assertEqual(result.points[1]["source_init_time"], NOW - timedelta(hours=6))
 
     def test_zero_cost_gate_requires_explicit_disabled_billing(self):
         for payload, status in [({"billingEnabled": True}, 200), ({}, 200), ({"billingEnabled": False}, 403)]:
