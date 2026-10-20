@@ -59,8 +59,8 @@ def weather_kind(row, timezone="Europe/Madrid"):
 def weather_svg(kind="partly", size=80):
     # No borrowed assets, fonts, external icon requests or image subscriptions.
     sun = '<circle cx="49" cy="43" r="20" fill="#FFC95D"/><g stroke="#FFD57A" stroke-width="3" stroke-linecap="round"><path d="M49 13V7M49 79v-6M19 43h-6M85 43h-6M28 22l-4-4M74 68l-4-4M28 64l-4 4M74 18l-4 4"/></g>'
-    cloud = '<path d="M26 76a18 18 0 0 1-1-36 27 27 0 0 1 51-2 19 19 0 0 1 0 38Z" fill="#F2F8FC"/><path d="M26 76a18 18 0 0 1-15-8c15 4 31 1 44-8 12-8 22-8 36-7a19 19 0 0 1-15 23Z" fill="#DCEAF2"/>'
-    moon = '<path d="M77 73A34 34 0 0 1 44 16a29 29 0 0 0 33 57Z" fill="#E8F2FF"/><path d="m79 20 2 6 6 2-6 2-2 6-2-6-6-2 6-2Z" fill="#FFC95D"/>'
+    cloud = '<path d="M26 76a18 18 0 0 1-1-36 27 27 0 0 1 51-2 19 19 0 0 1 0 38Z" fill="#F2F8FC" stroke="#91ACBF" stroke-width="1.5"/><path d="M26 76a18 18 0 0 1-15-8c15 4 31 1 44-8 12-8 22-8 36-7a19 19 0 0 1-15 23Z" fill="#DCEAF2"/>'
+    moon = '<path d="M77 73A34 34 0 0 1 44 16a29 29 0 0 0 33 57Z" fill="#E8F2FF" stroke="#91ACBF" stroke-width="1.5" stroke-linejoin="round"/><path d="m79 20 2 6 6 2-6 2-2 6-2-6-6-2 6-2Z" fill="#FFC95D"/>'
     if kind == "sun":
         art = '<g transform="translate(11 12)">' + sun + '</g>'
     elif kind == "night":
@@ -140,10 +140,10 @@ def weather_details(first, wind_direction):
              ("drop", "Humedad", value(first.humidity), "%", "Humedad relativa"),
              ("rain", "Lluvia", value(first.precipitation,"",1), "mm", "Acumulación de esa hora"),
              ("layers", "Probabilidad", value(first.precip_probability), "%", "De lluvia en esa hora")]
-    html = '<div class="weather-details">'
+    html = '<dl class="weather-details" aria-label="Detalles de la próxima hora prevista">'
     for symbol, label, number, unit, note in items:
-        html += f'<article class="detail-card"><div class="detail-label">{icon(symbol)}{text(label)}</div><div class="detail-value">{text(number)} <small>{unit if number != "—" else ""}</small></div><p>{text(note if number != "—" else "Esta fuente no aporta el dato")}</p></article>'
-    st.markdown(html + '</div>', unsafe_allow_html=True)
+        html += f'<div class="weather-detail"><dt class="detail-label">{icon(symbol)}{text(label)}</dt><dd class="detail-value">{text(number)} <small>{unit if number != "—" else ""}</small><span class="detail-note">{text(note if number != "—" else "Esta fuente no aporta el dato")}</span></dd></div>'
+    st.markdown(html + '</dl>', unsafe_allow_html=True)
 
 
 def hourly_strip(main, timezone, title="Próximas horas", selected=False):
