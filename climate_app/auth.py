@@ -15,6 +15,7 @@ from climate_app.data.paths import DATA_DIR
 from climate_app.forecast.domain import instant, stamp, utcnow
 
 OWNER_FILE = DATA_DIR / "auth-owner.json"
+HTTPS_MARKER = DATA_DIR / "https-verified.json"
 ITERATIONS = 600_000
 
 
@@ -77,7 +78,7 @@ def owner_login(store):
         if not config:
             st.info("El acceso personal está pendiente de configurar por el propietario.")
             return
-        if os.environ.get("CLIMATE_HTTPS_VERIFIED") != "1":
+        if os.environ.get("CLIMATE_HTTPS_VERIFIED") != "1" and not HTTPS_MARKER.exists():
             st.info("El acceso personal se habilitará al verificar la conexión HTTPS.")
             return
         with st.form("owner_login", clear_on_submit=True):
@@ -101,8 +102,21 @@ def owner_login(store):
 
 def main():
     parser = argparse.ArgumentParser(description="Configurar el acceso del propietario sin mostrar contraseñas")
-    parser.add_argument("command", choices=["configure"])
+    parser.add_argument("command", choices=["configure", "verify-https"])
     args = parser.parse_args()
+    if args.command == "verify-https":
+        import requests
+        from urllib.parse import urlsplit
+        origin = os.environ.get("CLIMATE_PUBLIC_URL", "https://climate-app.51-170-61-130.sslip.io").rstrip("/")
+        if urlsplit(origin).scheme != "https":
+            raise SystemExit("Se requiere una URL HTTPS")
+        result = requests.get(origin + "/_stcore/health", timeout=20)
+        result.raise_for_status()
+        if urlsplit(result.url).scheme != "https" or urlsplit(result.url).hostname != urlsplit(origin).hostname:
+            raise SystemExit("Redirección HTTPS inesperada")
+        HTTPS_MARKER.parent.mkdir(parents=True, exist_ok=True)
+        HTTPS_MARKER.write_text(json.dumps({"origin": origin, "verified_at": stamp(utcnow())}), encoding="utf-8")
+        print("HTTPS y certificado verificados. El formulario de acceso personal ya puede habilitarse.")
     if args.command == "configure":
         import getpass
         username = input("Usuario: ").strip()

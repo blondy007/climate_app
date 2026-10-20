@@ -19,7 +19,9 @@ automáticas de previsiones ni de observaciones.
 
 ## Login del propietario
 
-Después de verificar HTTPS, configura `CLIMATE_HTTPS_VERIFIED=1` en Coolify.
+Después de publicar HTTPS, ejecuta `python -m climate_app.auth verify-https` en el
+contenedor. Comprueba el certificado y el endpoint antes de habilitar el login.
+También se admite `CLIMATE_HTTPS_VERIFIED=1` en Coolify tras una verificación externa.
 La contraseña se elige privadamente; no debe enviarse al chat ni guardarse en Git.
 En una terminal privada del contenedor:
 
