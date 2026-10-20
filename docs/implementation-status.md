@@ -37,7 +37,15 @@ pruebas de pago, recursos OCI ni APIs comerciales.
   errores, consenso, unidades, filtrado de modelos, cuotas y restauración SQLite.
 - APIs reales verificadas: ECMWF, ICON, GFS y MET Norway. GFS ofrece probabilidad
   de precipitación; no se inventa en fuentes que no la suministran.
-- Pendiente: verificación final y visual, HTTPS, despliegue y restauración en VPS.
+- Preliminar desplegada en Oracle: `720e9a4`, build ARM64, HTTPS válido y redirección
+  desde HTTP, cuatro fuentes operativas y 86.846 observaciones reales persistentes.
+- Restauración aislada real: SQLite íntegro (2 lugares, 10 runs, 2.680 puntos,
+  86.846 observaciones), CSV original de 4.611.430 bytes conservado.
+- GitHub Actions valida las 23 pruebas, pero el trigger de la API Coolify devuelve
+  403. Se utilizó el fallback manual autorizado (`bg5ukmw5y35t4h0hcgax3wa7`).
+- Ajustando leyendas y tablas tras verificar la pantalla móvil de 390 px.
+- Pendiente: monitor/catálogo HTTPS, documentar infraestructura y configurar la
+  cuenta del propietario sin exponer ni pedir su contraseña en el chat.
 - El propietario rechazó Tailscale para acceder a la app: se implementa login en
   la web HTTPS. Tailscale queda reservado a administración de la VPS.
 - Pendiente externo: acceso WeatherNext aprobado y credenciales de runtime

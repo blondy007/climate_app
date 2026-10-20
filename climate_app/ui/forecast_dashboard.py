@@ -21,6 +21,10 @@ METRICS = {"temperature": ("Temperatura", "°C"), "humidity": ("Humedad", "%"),
            "wind_direction": ("Dirección del viento", "°")}
 COLORS = {"climateapp": "#0d9488", "ecmwf": "#6366f1", "icon": "#f59e0b",
           "gfs": "#ec4899", "metno": "#3b82f6", "weathernext3": "#8b5cf6", "climateapp_private": "#0f766e"}
+CHART_LABELS = {"climateapp": "Consenso", "climateapp_private": "Consenso + WN3",
+                "ecmwf": "ECMWF IFS", "icon": "ICON", "gfs": "GFS",
+                "metno": "MET Norway", "weathernext3": "WeatherNext 3"}
+CHART_CONFIG = {"displayModeBar": False, "responsive": True}
 
 
 def number(value, unit="", digits=1):
@@ -39,8 +43,10 @@ def local_times(series, timezone):
 
 
 def configure_figure(fig, title, unit, height=330):
-    fig.update_layout(title=title, height=height, margin=dict(t=65, b=30, l=15, r=15),
-                      hovermode="x unified", legend=dict(orientation="h", y=1.03),
+    fig.update_layout(title=dict(text=title, font=dict(size=16)), height=height,
+                      margin=dict(t=55, b=110, l=40, r=15),
+                      hovermode="x unified", legend=dict(orientation="h", y=-0.25,
+                                                        yanchor="top", x=0, font=dict(size=11)),
                       yaxis_title=unit, xaxis_title=None)
     return fig
 
@@ -164,9 +170,9 @@ def forecast_view(store, location, frame):
     for source in (frame if compare else main).provider.unique():
         data = frame[frame.provider == source]
         fig.add_trace(go.Scatter(x=local_times(data.valid_time, location.timezone), y=data.temperature,
-                                name=LABELS.get(source, source), line=dict(color=COLORS[source], width=3 if source == provider else 1),
+                                name=CHART_LABELS.get(source, source), line=dict(color=COLORS[source], width=3 if source == provider else 1),
                                 connectgaps=False))
-    st.plotly_chart(configure_figure(fig, "Temperatura y comparación de modelos", "°C", 430), use_container_width=True)
+    st.plotly_chart(configure_figure(fig, "Temperatura prevista", "°C", 430), use_container_width=True, config=CHART_CONFIG)
     st.caption("La banda P10–P90 solo aparece cuando la fuente la proporciona. La separación entre líneas muestra desacuerdo entre modelos y no es un intervalo probabilístico.")
     left, right = st.columns(2)
     rain = make_subplots(specs=[[{"secondary_y": True}]])
@@ -175,18 +181,20 @@ def forecast_view(store, location, frame):
     if main.precip_probability.notna().any():
         rain.add_trace(go.Scatter(x=x, y=main.precip_probability, name="Probabilidad (%)", line=dict(color="#8b5cf6")), secondary_y=True)
         rain.update_yaxes(range=[0, 100], title="%", secondary_y=True)
-    left.plotly_chart(configure_figure(rain, "Precipitación por hora", "mm"), use_container_width=True)
+    left.plotly_chart(configure_figure(rain, "Precipitación por hora", "mm"), use_container_width=True, config=CHART_CONFIG)
     wind = go.Figure()
     wind.add_trace(go.Scatter(x=x, y=main.wind_speed, name="Sostenido", line=dict(color="#0d9488"),
                              customdata=main.wind_direction.map(direction), hovertemplate="%{y:.1f} km/h · %{customdata}"))
     if main.wind_gust.notna().any():
         wind.add_trace(go.Scatter(x=x, y=main.wind_gust, name="Rachas", line=dict(dash="dot", color="#f59e0b")))
-    right.plotly_chart(configure_figure(wind, "Viento y rachas", "km/h"), use_container_width=True)
+    right.plotly_chart(configure_figure(wind, "Viento y rachas", "km/h"), use_container_width=True, config=CHART_CONFIG)
     st.markdown("### Previsión diaria")
     daily = daily_summary(main, location.timezone)
     daily = daily.rename(columns={"date": "Día", "minimum": "Mínima °C", "maximum": "Máxima °C",
         "precipitation": "Lluvia mm", "wind": "Viento máximo km/h", "gust": "Racha máxima km/h",
         "probability": "Prob. horaria máx. %", "rain_hours": "Horas con dato de lluvia", "temperature_hours": "Horas previstas"})
+    daily = daily.round({"Mínima °C": 1, "Máxima °C": 1, "Lluvia mm": 2,
+                         "Viento máximo km/h": 1, "Racha máxima km/h": 1, "Prob. horaria máx. %": 0})
     st.dataframe(daily, hide_index=True, use_container_width=True)
     st.caption("Hoy y el último día pueden estar incompletos. La lluvia suma solo horas disponibles; la probabilidad mostrada es la máxima horaria, no la probabilidad diaria.")
     st.markdown("### Comparación con la climatología local")
@@ -242,10 +250,10 @@ def evaluation_view(store, location):
     selected["model"] = selected.provider.map(LABELS)
     fig = go.Figure()
     for provider, group in selected.groupby("provider"):
-        fig.add_trace(go.Bar(x=group.horizon, y=group.mae, name=LABELS[provider], marker_color=COLORS[provider],
+        fig.add_trace(go.Bar(x=group.horizon, y=group.mae, name=CHART_LABELS[provider], marker_color=COLORS[provider],
                              customdata=group.n, hovertemplate="MAE %{y:.2f}<br>%{customdata} muestras<extra>%{fullData.name}</extra>"))
     fig.update_xaxes(categoryorder="array", categoryarray=[label for _, label in HORIZONS])
-    st.plotly_chart(configure_figure(fig, "Error absoluto medio · menor es mejor", unit, 400), use_container_width=True)
+    st.plotly_chart(configure_figure(fig, "Error absoluto medio", unit, 400), use_container_width=True, config=CHART_CONFIG)
     display = selected[["model", "horizon", "mae", "rmse", "bias", "n", "days", "brier", "interval_coverage"]].rename(columns={
         "model": "Modelo", "horizon": "Antelación", "mae": f"MAE {unit}", "rmse": f"RMSE {unit}",
         "bias": f"Sesgo {unit}", "n": "Muestras", "days": "Días", "brier": "Brier lluvia ≥0,1 mm",
@@ -261,10 +269,10 @@ def render_forecast_dashboard(evaluation=False):
     store = Store()
     store.seed()
     st.title("ClimateApp")
+    st.caption("Previsión, modelos y clima local · Uso personal · Coste adicional 0 €")
     owner_login(store)
     if private_view():
         st.caption("Sesión personal · WeatherNext y consenso completo para uso personal")
-    st.caption("Previsión, modelos y clima local · Uso personal · Coste adicional 0 €")
     location_controls(store)
     locations = store.locations()
     if not locations:
@@ -287,6 +295,6 @@ def render_forecast_dashboard(evaluation=False):
         else:
             forecast_view(store, location, frame)
     st.divider()
-    st.markdown("Datos: [Open-Meteo](https://open-meteo.com/) · ECMWF · DWD · NOAA · [MET Norway](https://www.met.no/en) · [Meteostat](https://meteostat.net/) · Google DeepMind WeatherNext cuando esté habilitado. [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); conversiones de unidades y agregaciones realizadas por ClimateApp.")
+    st.markdown("Fuentes abiertas: [Open-Meteo](https://open-meteo.com/) · ECMWF · DWD · NOAA · [MET Norway](https://www.met.no/en) · [Meteostat](https://meteostat.net/). [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); conversiones de unidades y agregaciones realizadas por ClimateApp.")
     if private_view():
         st.caption("Google BigQuery · © 2024-6 Google LLC, whose machine learning models were used to create the experimental data made available under the following licence terms https://storage.googleapis.com/weathernext-public/terms-of-use.pdf. This data is intended for experimental modelling only and is not intended, validated, or approved for real world use.")
