@@ -148,7 +148,7 @@ def weather_details(first, wind_direction):
 
 def hourly_strip(main, timezone, title="Próximas horas", selected=False):
     cells = []
-    samples = main if selected else main.head(24)
+    samples = main if selected else main[main.valid_time <= pd.Timestamp.now(tz="UTC") + pd.Timedelta(hours=24)]
     repeated_hours = samples.valid_time.dt.tz_convert(timezone).dt.strftime("%H:%M").duplicated(keep=False) if selected else pd.Series(False, index=samples.index)
     for index, row in samples.iterrows():
         local = row.valid_time.tz_convert(timezone)
@@ -156,8 +156,9 @@ def hourly_strip(main, timezone, title="Próximas horas", selected=False):
         kind, _ = weather_kind(row, timezone)
         rain = value(row.precip_probability,"%") if pd.notna(row.precip_probability) else value(row.precipitation," mm",1)
         cells.append(f'<div class="hour-cell"><time>{text(hour)}</time>{weather_svg(kind,44)}<strong>{value(row.temperature,"°")}</strong><span>{text(rain)}</span></div>')
-    note = f"{len(samples)} horas disponibles · Desliza" if selected else "Desliza para explorar"
-    st.markdown('<section id="hourly-section" class="hourly-card"><div class="card-heading">' + icon("clock",18) + '<h2>' + text(title) + '</h2><span>' + note + '</span></div><div class="hourly-scroll" tabindex="0" role="region" aria-label="Previsión horaria, desplazamiento horizontal">' + ''.join(cells) + '</div></section>', unsafe_allow_html=True)
+    note = f"{len(samples)} horas disponibles · Desliza" if selected else "Desliza para explorar" if len(samples) else "Sin horas disponibles"
+    empty = '<p class="card-footnote">Esta fuente no aporta horas dentro de las próximas 24 horas. Toca un día abajo para explorar las disponibles.</p>' if samples.empty else ""
+    st.markdown('<section id="hourly-section" class="hourly-card"><div class="card-heading">' + icon("clock",18) + '<h2>' + text(title) + '</h2><span>' + note + '</span></div><div class="hourly-scroll" tabindex="0" role="region" aria-label="Previsión horaria, desplazamiento horizontal">' + ''.join(cells) + '</div>' + empty + '</section>', unsafe_allow_html=True)
 
 
 def day_label(day, timezone):
