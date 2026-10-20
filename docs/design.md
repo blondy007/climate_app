@@ -33,6 +33,9 @@ La cabecera mantiene selector y botón de gestión en una fila también en móvi
 el botón desplaza directamente a Tus lugares.
 
 Las filas diarias son botones accesibles con teclado y área táctil completa.
+El contenedor Markdown de cada fila elimina el margen negativo de Streamlit
+para que contenido, botón, fondo y borde tengan la misma altura. El resaltado
+seleccionado y el foco se dibujan hacia dentro y no invaden los días contiguos.
 Al elegir una se resaltan y se abre su franja horaria, con vuelta a las próximas
 24 horas. Solo aparecen las horas disponibles del día y horizonte elegidos.
 Los cambios de lugar o modelo reinician la selección; un horizonte que ya no
