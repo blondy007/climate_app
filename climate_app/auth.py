@@ -72,7 +72,7 @@ def owner_login(store):
                 st.session_state.pop("owner_login_time", None)
                 st.rerun()
             return
-        st.caption("Inicia sesión para consultar WeatherNext y el consenso completo, y gestionar lugares, estaciones y umbrales.")
+        st.caption("Inicia sesión para consultar WeatherNext y el consenso completo.")
         config = owner_config()
         if not config:
             st.info("El acceso personal está pendiente de configurar por el propietario.")

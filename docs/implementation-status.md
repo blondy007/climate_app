@@ -47,8 +47,8 @@ pruebas de pago, recursos OCI ni APIs comerciales.
 - Preliminar posterior `5788d89` verificada en móvil de 390 px, con leyendas y
   tablas adaptadas. Monitor HTTPS Up; infraestructura documentada y publicada.
 - Cuenta del propietario configurada y verificada sin mostrar contraseña ni hash.
-- La gestión de lugares, estaciones y umbrales requiere la sesión personal;
-  las consultas y filtros de las fuentes abiertas siguen accesibles públicamente.
+- La gestión de estaciones y umbrales conserva la autorización pública previa
+  del propietario. WeatherNext y el consenso completo exigen la sesión personal.
 - La siguiente revisión conserva la pasada y celda nativas por cada hora de
   WeatherNext y evita replicar metadatos JSON al evaluar meses de archivo.
 - El propietario rechazó Tailscale para acceder a la app: se implementa login en

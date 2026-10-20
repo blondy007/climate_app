@@ -16,8 +16,6 @@ from climate_app.shared.state import UPLOAD_CACHE
 from climate_app.ui.dashboard import render_dashboard
 from climate_app.ui.notifications import handle_station_feedback
 from climate_app.ui.sidebar import render_sidebar
-from climate_app.auth import owner_login
-from climate_app.forecast.store import Store
 
 st.set_page_config(page_title="ClimateApp · Clima y previsión", page_icon="🌤️", layout="wide")
 
@@ -74,7 +72,6 @@ def render_history() -> None:
 
     st.title("Clima Meteostat · Comparativa")
     st.caption(f"Archivo activo: {source_label}")
-    owner_login(Store())
 
     handle_station_feedback()
 

@@ -52,9 +52,6 @@ def configure_figure(fig, title, unit, height=330):
 
 
 def location_controls(store):
-    if not private_view():
-        st.caption("Inicia sesión para añadir o gestionar los lugares compartidos.")
-        return
     with st.expander("Añadir o gestionar lugares"):
         st.caption("Hasta 10 lugares activos. Las ubicaciones y sus previsiones se guardan entre visitas.")
         with st.form("search_forecast_place"):

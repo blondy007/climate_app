@@ -40,9 +40,8 @@ ventana de 15 minutos mediante un contador persistente y atómico.
 No hay contraseña por defecto ni registro abierto. Sin cuenta configurada,
 WeatherNext y el consenso privado permanecen ocultos.
 
-La gestión de lugares, estaciones históricas y umbrales compartidos exige también
-esa sesión. Los visitantes pueden consultar y filtrar las fuentes abiertas sin
-modificar el archivo común ni consumir el cupo de lugares.
+La gestión pública de estaciones y umbrales conserva la autorización previa del
+propietario. Se pueden mantener hasta diez lugares activos dentro de las cuotas.
 
 ## Frecuencia y coste
 
