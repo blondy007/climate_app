@@ -13,6 +13,8 @@ def canonical_station_id(station_id: Optional[str]) -> str:
     key = value.lower()
     if key in STATION_ID_OVERRIDES:
         return STATION_ID_OVERRIDES[key]
+    if value.isdigit() and len(value) < 5:
+        return value.zfill(5)
     if "_" in value:
         suffix = value.split("_")[-1].strip()
         if suffix:

@@ -7,3 +7,17 @@ __pycache__
 .pytest_cache
 .streamlit
 notes
+tests
+test-results
+data/*.sqlite3*
+data/*.lock
+data/meteostat-cache
+data/meteostat-observations
+.env*
+credentials*.json
+*-credentials.json
+data/auth-owner.json
+data/private
+.secrets
+application_default_credentials.json
+service-account*.json

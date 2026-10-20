@@ -17,10 +17,10 @@ from climate_app.ui.dashboard import render_dashboard
 from climate_app.ui.notifications import handle_station_feedback
 from climate_app.ui.sidebar import render_sidebar
 
-st.set_page_config(page_title="Clima Meteostat · Comparativa", layout="wide")
+st.set_page_config(page_title="ClimateApp · Clima y previsión", page_icon="🌤️", layout="wide")
 
 
-def main() -> None:
+def render_history() -> None:
     ensure_data_dir()
 
     if "station_search_results" not in st.session_state:
@@ -119,6 +119,16 @@ def main() -> None:
 
     st.sidebar.header("Carga de datos")
     st.sidebar.file_uploader("Archivo CSV (Meteostat Hourly)", type=["csv"], key="upload_csv")
+
+
+def main() -> None:
+    view = st.radio("Navegación", ["🌤️ Previsión", "🎯 Aciertos", "📊 Histórico"],
+                    horizontal=True, label_visibility="collapsed", key="main_view")
+    if view == "📊 Histórico":
+        render_history()
+    else:
+        from climate_app.ui.forecast_dashboard import render_forecast_dashboard
+        render_forecast_dashboard(evaluation=view == "🎯 Aciertos")
 
 
 if __name__ == "__main__":

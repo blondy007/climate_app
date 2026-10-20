@@ -3,7 +3,7 @@ from typing import Dict, Optional
 
 import pandas as pd
 import streamlit as st
-from meteostat import Hourly, Stations
+from climate_app.data.meteostat_config import Hourly, Stations
 
 from climate_app.data.transformations import normalize_meteostat_df
 from climate_app.shared.utils import canonical_station_id

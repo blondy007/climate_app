@@ -123,7 +123,8 @@ def normalize_meteostat_df(df: pd.DataFrame) -> pd.DataFrame:
     wspd_numeric = pd.to_numeric(df_norm["wspd"], errors="coerce")
     humidity_numeric = pd.to_numeric(df_norm["humedad_%"], errors="coerce")
 
-    df_norm["wspd_kmh"] = wspd_numeric * 3.6
+    # Meteostat metric wind is already km/h, including the raw CSV exports.
+    df_norm["wspd_kmh"] = wspd_numeric
     df_norm["feels_like"] = [
         compute_feels_like(temp, wind, humidity)
         for temp, wind, humidity in zip(temp_numeric, df_norm["wspd_kmh"], humidity_numeric)

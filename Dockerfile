@@ -24,6 +24,6 @@ RUN mkdir -p /app/data && chmod +x /app/docker-entrypoint.sh
 EXPOSE 8501
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=3)"
+  CMD python -m climate_app.health
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]

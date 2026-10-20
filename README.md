@@ -1,4 +1,17 @@
-﻿# Clima Meteostat · Comparativa
+# ClimateApp · Histórico, previsión y aciertos
+
+Aplicación personal en español con previsión de ECMWF, ICON, GFS y MET Norway,
+comparación climatológica, archivo automático, evaluación de aciertos y consenso
+ponderado por observaciones reales. Conserva el histórico Meteostat existente.
+
+WeatherNext 3 incorpora adaptador y acceso personal con login HTTPS. Su validación
+real sigue pendiente de aprobación de Google y credenciales privadas.
+
+**Coste incremental estricto: 0 EUR.** No activar billing, pruebas con cargo,
+APIs de pago ni recursos Oracle adicionales.
+
+- [Solicitar y configurar WeatherNext](docs/weathernext-setup.md)
+- [Login, colector, datos, backup y despliegue](docs/operations.md)
 
 ## Entorno virtual
 
@@ -13,7 +26,9 @@
 3. `pip install -r requirements.txt`
 
 ## Ejecución
-- `streamlit run app.py`
+- `python -m climate_app.runtime`: web y recopilación automática.
+- `streamlit run app.py`: solo interfaz sobre datos previamente recopilados.
+- `python -m unittest discover -s tests -v`: pruebas sin APIs ni credenciales reales.
 
 ## Docker
 

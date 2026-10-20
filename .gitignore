@@ -34,6 +34,20 @@ pip-wheel-metadata/
 *.log
 logs/
 *.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+data/*.lock
+data/meteostat-cache/
+data/meteostat-observations/
+test-results/
+credentials*.json
+*-credentials.json
+data/auth-owner.json
+data/private/
+.secrets/
+application_default_credentials.json
+service-account*.json
 
 # IDE / editor
 .vscode/

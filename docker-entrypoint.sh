@@ -11,8 +11,4 @@ if [ ! -f /app/data/wind_thresholds.json ]; then
   cp /app/seed-data/wind_thresholds.json /app/data/wind_thresholds.json
 fi
 
-exec streamlit run app.py \
-  --server.address=0.0.0.0 \
-  --server.port="${PORT:-8501}" \
-  --server.headless=true \
-  --browser.gatherUsageStats=false
+exec python -m climate_app.runtime
