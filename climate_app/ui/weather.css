@@ -24,6 +24,8 @@ h1,h2,h3 { letter-spacing:-.035em; }
 [data-testid="stButton"] button,[data-testid="stDownloadButton"] button,[data-testid="stFormSubmitButton"] button { border:1px solid #d5e3e8; background:white; border-radius:11px; min-height:42px; color:var(--ink); font-weight:600; }
 [data-testid="stButton"] button:hover,[data-testid="stDownloadButton"] button:hover { border-color:#147d92; color:#147d92; background:#edf7f8; }
 [data-testid="stFormSubmitButton"] button { background:#193e4d; color:white; }
+[data-testid="stFormSubmitButton"] button p { color:white; }
+[data-testid="stFormSubmitButton"] button:hover,[data-testid="stFormSubmitButton"] button:focus { background:#245c65; color:white; border-color:#147d92; }
 [data-testid="stForm"] { background:#fff; border-color:var(--line); border-radius:18px; }
 [data-testid="stExpander"] { border:1px solid var(--line); background:rgba(255,255,255,.8); border-radius:15px; overflow:hidden; }
 [data-testid="stExpander"] summary { padding:14px 18px; font-size:13px; }
