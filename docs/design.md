@@ -42,6 +42,21 @@ Los cambios de lugar o modelo reinician la selección; un horizonte que ya no
 incluye el día también la reinicia. Los días de 25 horas conservan ambas horas
 repetidas con su zona, y la portada sigue describiendo la próxima hora prevista.
 
+La previsión muestra temperatura y sensación térmica juntas en portada, horas y
+rangos diarios; Evolución muestra ambas curvas. Comparar modelos y Climatología
+permiten elegir la sensación, que también figura en tablas, CSV y Aciertos.
+Se calcula por hora con temperatura, humedad y viento de la misma fuente (o las
+variables del consenso), usando [Steadman a la sombra](https://www.bom.gov.au/info/thermal_stress/#atapproximation).
+El viento a 10 m se convierte de km/h a m/s; no se añade radiación solar. Se
+requieren los tres datos finitos, humedad de 0 a 100 %, viento no negativo y
+temperatura meteorológica plausible (-100 a 70 °C). No se rellena con temperatura
+cuando falta un dato. Los rangos diarios parten de las sensaciones horarias y
+las tablas indican su cobertura. La banda P10–P90 sigue siendo solo de temperatura.
+Climatología y Aciertos aplican el mismo método a las observaciones completas;
+la sensación no se presenta como una medición directa. Se deriva al consultar,
+sin migraciones ni cambios de datos archivados, cuotas o consultas externas.
+El análisis histórico original conserva sus índices de frío/calor existentes.
+
 Streamlit se actualiza de 1.37.0 a 1.38.0 para corregir el fallo de su árbol de
 bloques que podía dejar la pantalla en blanco al cambiar la vista
 ([corrección oficial](https://github.com/streamlit/streamlit/pull/9276)).

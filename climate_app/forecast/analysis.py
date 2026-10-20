@@ -6,8 +6,9 @@ import numpy as np
 import pandas as pd
 
 from climate_app.forecast.domain import VARIABLES, horizon, utcnow
+from climate_app.forecast.thermal import with_feels_like
 
-EVALUATED = ("temperature", "humidity", "precipitation", "wind_speed", "wind_direction")
+EVALUATED = ("temperature", "feels_like", "humidity", "precipitation", "wind_speed", "wind_direction")
 FLOORS = {"temperature": 0.5, "humidity": 5, "precipitation": 0.2,
           "wind_speed": 3, "wind_direction": 15, "cloud_cover": 10,
           "wind_gust": 4, "precip_probability": 0.05}
@@ -31,7 +32,7 @@ def paired_samples(forecasts, observations, as_of=None):
 
 
 def scores(forecasts, observations, as_of=None, common_only=False):
-    pairs = paired_samples(forecasts, observations, as_of)
+    pairs = paired_samples(with_feels_like(forecasts), with_feels_like(observations), as_of)
     records = []
     if pairs.empty:
         return pd.DataFrame()
@@ -129,9 +130,13 @@ def combine(forecasts, training_scores=None, as_of=None):
     return pd.DataFrame(records)
 
 
-def climatology(observations, target, forecast_temperature, timezone="Europe/Madrid"):
+def climatology(observations, target, forecast_temperature, timezone="Europe/Madrid", variable="temperature"):
     if observations.empty or pd.isna(forecast_temperature):
         return None
+    if variable not in ("temperature", "feels_like"):
+        raise ValueError("Variable climatológica no disponible")
+    if variable == "feels_like":
+        observations = with_feels_like(observations)
     local = observations.valid_time.dt.tz_convert(timezone)
     target = pd.Timestamp(target).tz_convert(timezone)
     # A fixed leap year gives a stable calendar index across leap/non-leap years.
@@ -141,10 +146,10 @@ def climatology(observations, target, forecast_temperature, timezone="Europe/Mad
     distance = np.minimum(delta, 366 - delta)
     candidates = observations[(distance <= 15) & (local.dt.hour == target.hour) &
                               (local.dt.year < target.year)].copy()
-    candidates = candidates.dropna(subset=["temperature"])
+    candidates = candidates.dropna(subset=[variable])
     if len(candidates) < 20:
         return None
-    values = candidates.temperature
+    values = candidates[variable]
     return {"mean": float(values.mean()), "delta": float(forecast_temperature - values.mean()),
             "percentile": float(100 * (values < forecast_temperature).mean()), "n": len(values),
             "years": sorted(candidates.valid_time.dt.tz_convert(timezone).dt.year.unique().tolist())}
@@ -153,10 +158,12 @@ def climatology(observations, target, forecast_temperature, timezone="Europe/Mad
 def daily_summary(frame, timezone):
     if frame.empty:
         return pd.DataFrame()
-    frame = frame.copy()
+    frame = with_feels_like(frame)
     frame["date"] = frame.valid_time.dt.tz_convert(timezone).dt.date
     return frame.groupby("date").agg(
         minimum=("temperature", "min"), maximum=("temperature", "max"),
+        feels_minimum=("feels_like", "min"), feels_maximum=("feels_like", "max"),
+        feels_hours=("feels_like", "count"),
         precipitation=("precipitation", lambda s: s.sum(min_count=1)),
         rain_hours=("precipitation", "count"), temperature_hours=("temperature", "count"),
         wind=("wind_speed", "max"), gust=("wind_gust", "max"),

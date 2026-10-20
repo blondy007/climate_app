@@ -14,11 +14,12 @@ from climate_app.forecast.access import private_view, visible_forecasts
 from climate_app.forecast.domain import HORIZONS, LABELS, instant, utcnow
 from climate_app.forecast.providers import geocode
 from climate_app.forecast.store import Store
+from climate_app.forecast.thermal import METHOD, SOURCE, with_feels_like
 from climate_app.auth import owner_login
 from climate_app.ui.design import section, hero_html, weather_details, hourly_strip, daily_cards, day_label, empty_state, text
 from climate_app.ui.appearance import PALETTES, appearance_controls, palette
 
-METRICS = {"temperature": ("Temperatura", "°C"), "humidity": ("Humedad", "%"),
+METRICS = {"temperature": ("Temperatura", "°C"), "feels_like": ("Sensación térmica", "°C"), "humidity": ("Humedad", "%"),
            "precipitation": ("Precipitación", "mm"), "wind_speed": ("Viento", "km/h"),
            "wind_direction": ("Dirección del viento", "°")}
 COLORS = {"climateapp": "#197d8b", "ecmwf": "#647ba8", "icon": "#c99a48",
@@ -209,6 +210,7 @@ def provider_status(store, location):
 
 
 def forecast_view(store, location, frame):
+    frame = with_feels_like(frame)
     hero = st.empty()
     hours = st.radio("Horizonte", [48, 120, 240, 360], horizontal=True,
                      format_func=lambda h: {48: "48 horas", 120: "5 días", 240: "10 días", 360: "15 días"}[h])
@@ -253,6 +255,9 @@ def forecast_view(store, location, frame):
         reset_day.button("Ver próximas 24 horas", key="reset_forecast_day", on_click=select_day, args=(None,))
     weather_details(first, direction(first.wind_direction))
     daily_cards(daily, main, location.timezone, on_select=select_day, selected_day=selected_day)
+    with st.expander("Sobre la sensación térmica"):
+        st.markdown(f"Estimación **a la sombra** a partir de la temperatura, la humedad y el viento de cada modelo, con el [método Steadman del Bureau of Meteorology]({SOURCE}). No incluye el sol directo.")
+        st.caption("Se utiliza el mismo cálculo para todas las fuentes y para el consenso. Si falta alguna variable necesaria, aparece una raya. Los rangos diarios usan solo las horas disponibles y pueden estar incompletos.")
 
     section("Mira un poco más allá", "Explora la evolución, contrasta modelos y pon el tiempo en contexto.", "chart")
     evolution, comparison, climate = st.tabs(["Evolución", "Comparar modelos", "Climatología"])
@@ -276,7 +281,12 @@ def forecast_view(store, location, frame):
         st.caption("Lluvia acumulada durante cada hora. Las probabilidades e intervalos solo aparecen si la fuente los proporciona.")
     with comparison:
         compare = st.checkbox("Comparar modelos", value=True)
-        st.plotly_chart(temperature_figure(main, frame if compare else main, provider, location), use_container_width=True, config=CHART_CONFIG, theme=None)
+        comparison_variable = st.radio("Dato a comparar", ["temperature", "feels_like"], horizontal=True,
+                                       format_func=lambda key: METRICS[key][0], key="forecast_comparison_variable")
+        st.plotly_chart(temperature_figure(main, frame if compare else main, provider, location,
+                                         variable=comparison_variable, include_feels_like=False), use_container_width=True, config=CHART_CONFIG, theme=None)
+        if comparison_variable == "feels_like":
+            st.caption("Sensación estimada a la sombra para cada modelo. Los huecos indican que faltan temperatura, humedad o viento; la banda P10–P90 de temperatura no se aplica a la sensación.")
         if provider in ("climateapp", "climateapp_private"):
             metadata = json.loads(first.metadata)
             st.markdown('<div class="insight-card"><h3>' + ("Un consenso que aprende de sus aciertos" if metadata.get("trained") else "El consenso está empezando a aprender") + '</h3><p>' + ("La combinación se pondera según los errores observados anteriormente en este lugar y plazo." if metadata.get("trained") else "Por ahora, los modelos tienen el mismo peso. Los pesos se ajustan cuando cada fuente acumula al menos 30 observaciones en tres días por variable y plazo.") + '</p></div>', unsafe_allow_html=True)
@@ -284,50 +294,66 @@ def forecast_view(store, location, frame):
     with climate:
         section("¿Es normal para esta época?", "Compara cada hora prevista con los mismos momentos de años anteriores.", "layers")
         observations = store.observations(location.id, since=utcnow() - timedelta(days=6 * 366))
+        climate_variable = st.radio("Dato de referencia", ["temperature", "feels_like"], horizontal=True,
+                                    format_func=lambda key: METRICS[key][0], key="forecast_climate_variable")
         target_index = st.select_slider("Hora que quieres comparar", options=list(range(len(main))), value=min(23, len(main) - 1),
                                         format_func=lambda i: main.iloc[i].valid_time.tz_convert(location.timezone).strftime("%d/%m %H:%M"))
         target = main.iloc[target_index]
-        baseline = climatology(observations, target.valid_time, target.temperature, location.timezone)
+        baseline = climatology(observations, target.valid_time, target[climate_variable], location.timezone, variable=climate_variable)
+        if climate_variable == "feels_like":
+            st.caption("Comparamos sensaciones calculadas con el mismo método, usando temperatura, humedad y viento de las observaciones históricas. Solo cuentan las horas con los tres datos.")
         if baseline:
             columns = st.columns(3)
-            columns[0].metric("Previsión", number(target.temperature, "°C"))
+            columns[0].metric(METRICS[climate_variable][0] + " prevista", number(target[climate_variable], "°C"))
             columns[1].metric("Referencia histórica", number(baseline["mean"], "°C"), delta=f"{baseline['delta']:+.1f} °C previstos")
             columns[2].metric("Percentil histórico", f"{baseline['percentile']:.0f}")
             delta = baseline["delta"]
             label = "Más cálido de lo habitual" if delta > 1 else "Más fresco de lo habitual" if delta < -1 else "En línea con años anteriores"
             st.markdown(f'<div class="insight-card"><h3>{label}</h3><p>La previsión está {abs(delta):.1f} °C {"por encima" if delta >= 0 else "por debajo"} de la media de la muestra comparable.</p></div>', unsafe_allow_html=True)
             st.caption(f"{baseline['n']} observaciones · Años {', '.join(map(str, baseline['years']))} · Misma hora local y fechas ±15 días. Es una referencia de la muestra disponible, no una normal climatológica de 30 años.")
+        elif pd.isna(target[climate_variable]):
+            st.info("Esta hora no aporta los datos necesarios para estimar la sensación térmica.")
         else:
             st.info("La referencia histórica se está preparando. Aparecerá cuando haya suficientes observaciones de años anteriores para esa fecha y hora.")
         station_caption(location)
     with st.expander("Tablas completas y descargas"):
         st.caption("La lluvia diaria suma las horas disponibles; la probabilidad diaria mostrada es la máxima horaria, no la probabilidad de lluvia durante todo el día.")
         daily_table = daily.rename(columns={"date": "Día", "minimum": "Mínima °C", "maximum": "Máxima °C",
+            "feels_minimum": "Sensación mínima °C", "feels_maximum": "Sensación máxima °C", "feels_hours": "Horas con sensación",
             "precipitation": "Lluvia mm", "wind": "Viento máximo km/h", "gust": "Racha máxima km/h",
             "probability": "Prob. horaria máx. %", "rain_hours": "Horas con dato de lluvia", "temperature_hours": "Horas previstas"}).round(2)
         st.dataframe(daily_table, hide_index=True, use_container_width=True)
-        export = main[["valid_time", "temperature", "humidity", "precipitation", "wind_speed", "wind_direction", "wind_gust", "precip_probability"]].copy()
+        export = main[["valid_time", "temperature", "feels_like", "humidity", "precipitation", "wind_speed", "wind_direction", "wind_gust", "precip_probability"]].copy()
+        export["feels_like_method"] = np.where(export.feels_like.notna(), METHOD, "")
+        st.caption("La sensación térmica es estimada a la sombra. «Horas con sensación» indica cuántas horas tienen los tres datos necesarios; los extremos diarios pueden tener cobertura parcial.")
         export["valid_time"] = export.valid_time.dt.tz_convert(location.timezone)
         for source, label in (("source_init_time", "Pasada superficie (UTC)"), ("temperature_init_time", "Pasada temperatura (UTC)")):
             if source in main and main[source].notna().any():
                 export[label] = main[source]
-        st.dataframe(export.rename(columns={"valid_time": "Hora local", **{key: val[0] for key, val in METRICS.items()}}), use_container_width=True, hide_index=True)
+        st.dataframe(export.rename(columns={"valid_time": "Hora local", "feels_like_method": "Método de sensación",
+                                            **{key: val[0] for key, val in METRICS.items()}}), use_container_width=True, hide_index=True)
         if provider != "weathernext3":
             st.download_button("Descargar CSV", export.to_csv(index=False).encode("utf-8-sig"), "climateapp-prevision.csv", "text/csv")
 
 
-def temperature_figure(main, comparison, provider, location):
+def temperature_figure(main, comparison, provider, location, variable="temperature", include_feels_like=True):
     fig = go.Figure()
-    if main.temperature_p10.notna().any() and main.temperature_p90.notna().any():
+    if variable == "temperature" and main.temperature_p10.notna().any() and main.temperature_p90.notna().any():
         fig.add_trace(go.Scatter(x=local_times(main.valid_time, location.timezone), y=main.temperature_p90,
                                 mode="lines", line=dict(width=0), showlegend=False, hoverinfo="skip"))
         fig.add_trace(go.Scatter(x=local_times(main.valid_time, location.timezone), y=main.temperature_p10,
                                 mode="lines", line=dict(width=0), fill="tonexty", fillcolor="rgba(80,155,179,.15)", name="P10–P90 nativo"))
     for source in comparison.provider.unique():
         data = comparison[comparison.provider == source]
-        fig.add_trace(go.Scatter(x=local_times(data.valid_time, location.timezone), y=data.temperature,
-                                name=CHART_LABELS.get(source, source), line=dict(color=COLORS[source], width=3 if source == provider else 1.6), connectgaps=False))
-    return configure_figure(fig, "Temperatura · hora local", "°C", 370)
+        label = CHART_LABELS.get(source, source)
+        fig.add_trace(go.Scatter(x=local_times(data.valid_time, location.timezone), y=data[variable],
+                                name=("Temperatura" if include_feels_like else label),
+                                line=dict(color=COLORS[source], width=3 if source == provider else 1.6), connectgaps=False))
+        if include_feels_like:
+            fig.add_trace(go.Scatter(x=local_times(data.valid_time, location.timezone), y=data.feels_like,
+                                    name="Sensación térmica", line=dict(color="#c99a48", width=2.5, dash="dot"), connectgaps=False))
+    title = "Temperatura y sensación · hora local" if include_feels_like else METRICS[variable][0] + " · hora local"
+    return configure_figure(fig, title, "°C", 370)
 
 
 def station_caption(location):
@@ -343,6 +369,8 @@ def evaluation_view(store, location):
     options = st.columns(3)
     days = options[0].selectbox("Ventana de evaluación", [30, 60, 90], index=2, format_func=lambda n: f"Últimos {n} días")
     variable = options[1].selectbox("Variable", list(METRICS), format_func=lambda key: METRICS[key][0])
+    if variable == "feels_like":
+        st.caption("Evaluamos la sensación estimada con el mismo método a ambos lados: previsión y datos medidos de temperatura, humedad y viento. No es una medición directa de la sensación de una persona.")
     common = options[2].checkbox("Solo horas comunes", value=True, help="Compara cada plazo usando los mismos instantes observados para los modelos que tienen datos")
     since = utcnow() - timedelta(days=days)
     archive = visible_forecasts(store.forecasts(location.id, since=since, latest=False))

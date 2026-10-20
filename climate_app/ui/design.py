@@ -131,7 +131,7 @@ def hero_html(location, first, main, provider_label, updated, stale=False):
         interval = f'<span class="hero-range">P10–P90 {value(first.temperature_p10,"°",1)} – {value(first.temperature_p90,"°",1)}</span>'
     return f'''<section class="weather-hero sky-{kind}" aria-label="Previsión de {text(location.display_name)}">
 <div class="hero-top"><span>{icon("pin",16)} {text(location.display_name)}</span><span class="source-chip">{text(provider_label)}</span></div>
-<div class="hero-main"><div><p class="hero-eyebrow">PRÓXIMA HORA · {text(WEEKDAYS[local.weekday()])} {local:%H:%M}</p><div class="hero-value">{value(first.temperature,"°")}<small>C</small></div><h1>{text(condition)}</h1>{interval}<p class="hero-extremes">Próximas 24 h <strong>↑ {value(maximum,"°")} &nbsp; ↓ {value(minimum,"°")}</strong></p></div><div class="hero-art">{weather_svg(kind,220)}</div></div>
+<div class="hero-main"><div><p class="hero-eyebrow">PRÓXIMA HORA · {text(WEEKDAYS[local.weekday()])} {local:%H:%M}</p><div class="hero-value">{value(first.temperature,"°")}<small>C</small></div><p class="hero-feels">Sensación <strong>{value(first.get("feels_like"),"°")}</strong><small>Estimada a la sombra</small></p><h1>{text(condition)}</h1>{interval}<p class="hero-extremes">Próximas 24 h <strong>↑ {value(maximum,"°")} &nbsp; ↓ {value(minimum,"°")}</strong><small>Sensación ↑ {value(near.get("feels_like", pd.Series(dtype=float)).max(),"°")} · ↓ {value(near.get("feels_like", pd.Series(dtype=float)).min(),"°")}</small></p></div><div class="hero-art">{weather_svg(kind,220)}</div></div>
 <div class="hero-bottom"><span class="freshness {"stale" if stale else ""}"><i></i>{"Datos antiguos" if stale else "Actualizado"} {updated:%H:%M} · {updated:%d/%m}</span><span>Hora local · {text(location.timezone)}</span></div></section>'''
 
 
@@ -155,7 +155,7 @@ def hourly_strip(main, timezone, title="Próximas horas", selected=False):
         hour = local.strftime("%H:%M %Z" if repeated_hours.loc[index] else "%H:%M")
         kind, _ = weather_kind(row, timezone)
         rain = value(row.precip_probability,"%") if pd.notna(row.precip_probability) else value(row.precipitation," mm",1)
-        cells.append(f'<div class="hour-cell"><time>{text(hour)}</time>{weather_svg(kind,44)}<strong>{value(row.temperature,"°")}</strong><span>{text(rain)}</span></div>')
+        cells.append(f'<div class="hour-cell"><time>{text(hour)}</time>{weather_svg(kind,44)}<strong>{value(row.temperature,"°")}</strong><span class="hour-feels" title="Sensación térmica estimada a la sombra">Sens. {value(row.get("feels_like"),"°")}</span><span>{text(rain)}</span></div>')
     note = f"{len(samples)} horas disponibles · Desliza" if selected else "Desliza para explorar" if len(samples) else "Sin horas disponibles"
     empty = '<p class="card-footnote">Esta fuente no aporta horas dentro de las próximas 24 horas. Toca un día abajo para explorar las disponibles.</p>' if samples.empty else ""
     st.markdown('<section id="hourly-section" class="hourly-card"><div class="card-heading">' + icon("clock",18) + '<h2>' + text(title) + '</h2><span>' + note + '</span></div><div class="hourly-scroll" tabindex="0" role="region" aria-label="Previsión horaria, desplazamiento horizontal">' + ''.join(cells) + '</div>' + empty + '</section>', unsafe_allow_html=True)
@@ -184,10 +184,10 @@ def daily_cards(daily, main, timezone, on_select, selected_day=None):
             rain = value(day.probability,"%") if pd.notna(day.probability) else value(day.precipitation," mm",1)
             with st.container():
                 active = " selected-day" if selected_day == day.date.isoformat() else ""
-                st.markdown(f'<div class="day-row{active}"><div><strong>{text(label)}</strong><small>{day.date:%d/%m}</small></div><span title="{text(condition)}">{weather_svg(kind,38)}</span><span class="day-rain">{text(rain)}</span><span class="day-low">{value(day.minimum,"°")}</span><span class="temperature-track"><i style="left:{start:.2f}%;width:{width:.2f}%"></i></span><strong class="day-high">{value(day.maximum,"°")}</strong></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="day-row{active}"><div><strong>{text(label)}</strong><small>{day.date:%d/%m}</small></div><span title="{text(condition)}">{weather_svg(kind,38)}</span><span class="day-rain">{text(rain)}</span><span class="day-low">{value(day.minimum,"°")}<small class="day-feels" title="Sensación mínima estimada">{value(day.feels_minimum,"°")}</small></span><span class="day-range"><span class="temperature-track"><i style="left:{start:.2f}%;width:{width:.2f}%"></i></span><small>Sensación</small></span><span class="day-high"><strong>{value(day.maximum,"°")}</strong><small class="day-feels" title="Sensación máxima estimada">{value(day.feels_maximum,"°")}</small></span></div>', unsafe_allow_html=True)
                 st.button(f"Ver horas de {label}, {day.date:%d/%m}", key=f"forecast_day_{day.date.isoformat()}",
                           on_click=on_select, args=(day.date.isoformat(),), use_container_width=True)
-        st.markdown('<p class="card-footnote">Mínima / máxima y lluvia de las horas disponibles. Hoy y el último día pueden estar incompletos.</p>', unsafe_allow_html=True)
+        st.markdown('<p class="card-footnote">Temperatura arriba; sensación estimada a la sombra abajo. Mínima / máxima y lluvia de las horas disponibles. Hoy y el último día pueden estar incompletos. — indica que falta algún dato necesario.</p>', unsafe_allow_html=True)
 
 
 def empty_state(title, description):
