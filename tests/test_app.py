@@ -68,6 +68,11 @@ class AppTests(unittest.TestCase):
                 next(box for box in app.checkbox if box.label == "Comparar modelos").set_value(False).run(timeout=30)
                 self.assertEqual(len(app.exception), 0, str(app.exception))
                 self.assertGreater(len(app.get("download_button")), 0)
+                other_place = store.locations()[1].id
+                app.selectbox(key="forecast_location").set_value(other_place).run(timeout=30)
+                app.radio(key="main_view").set_value("⚙️ Ajustes").run(timeout=30)
+                app.radio(key="main_view").set_value("🌤️ Previsión").run(timeout=30)
+                self.assertEqual(app.selectbox(key="forecast_location").value, other_place)
                 app.radio(key="main_view").set_value("🎯 Aciertos").run(timeout=30)
                 self.assertEqual(len(app.exception), 0, str(app.exception))
                 app.radio(key="main_view").set_value("📊 Histórico").run(timeout=30)

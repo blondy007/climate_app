@@ -77,6 +77,7 @@ def location_controls(store):
                     location_id = store.add_location(item["name"], item["latitude"], item["longitude"],
                                                      item.get("timezone", "UTC"))
                     st.session_state["forecast_location"] = location_id
+                    st.session_state["selected_forecast_location"] = location_id
                     st.session_state.pop("forecast_place_results", None)
                     st.rerun()
                 except ValueError as exc:
@@ -94,6 +95,7 @@ def location_controls(store):
                 try:
                     location_id = store.add_location(name, lat, lon, timezone)
                     st.session_state["forecast_location"] = location_id
+                    st.session_state["selected_forecast_location"] = location_id
                     st.rerun()
                 except (ValueError, KeyError):
                     st.warning("Revisa el nombre, la zona horaria y el límite de lugares activos.")
@@ -290,9 +292,11 @@ def render_forecast_dashboard(evaluation=False):
         return
     lookup = {loc.id: loc for loc in locations}
     if st.session_state.get("forecast_location") not in lookup:
-        st.session_state["forecast_location"] = locations[0].id
+        preferred = st.session_state.get("selected_forecast_location")
+        st.session_state["forecast_location"] = preferred if preferred in lookup else locations[0].id
     location_id = st.selectbox("Lugar", list(lookup), format_func=lambda key: lookup[key].name, key="forecast_location", label_visibility="collapsed")
     location = lookup[location_id]
+    st.session_state["selected_forecast_location"] = location_id
     if evaluation:
         evaluation_view(store, location)
     else:
