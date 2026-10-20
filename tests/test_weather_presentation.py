@@ -1,13 +1,24 @@
 import unittest
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 import pandas as pd
 
 from climate_app.forecast.domain import Location
-from climate_app.ui.design import hero_html, weather_kind
+from climate_app.ui.design import hero_html, hourly_strip, weather_kind
 
 
 class PresentationTests(unittest.TestCase):
+    def test_selected_day_keeps_all_25_hours_and_identifies_repeated_local_hours(self):
+        times = pd.date_range("2026-10-25", "2026-10-26", tz="Europe/Madrid", freq="h", inclusive="left").tz_convert("UTC")
+        frame = pd.DataFrame({"valid_time": times, "temperature": 12, "cloud_cover": 0, "precipitation": 0, "precip_probability": 0})
+        with patch("climate_app.ui.design.st.markdown") as render:
+            hourly_strip(frame, "Europe/Madrid", title="Domingo · 25/10", selected=True)
+        html = render.call_args.args[0]
+        self.assertEqual(html.count('class="hour-cell"'), 25)
+        self.assertIn("02:00 CEST", html)
+        self.assertIn("02:00 CET", html)
+
     def test_missing_conditions_do_not_invent_sun_or_rain(self):
         self.assertEqual(weather_kind({"cloud_cover": None, "precipitation": None})[0], "unknown")
         self.assertEqual(weather_kind({"cloud_cover": 0, "precipitation": 0, "precip_probability": 80})[0], "sun")

@@ -31,11 +31,22 @@ guarda en el navegador, separada de la cuenta y de la base de datos compartida.
 Automático sigue el esquema de color del dispositivo, incluidos sus cambios.
 Si el navegador bloquea el almacenamiento local, la elección dura la sesión.
 
-**Mis lugares** en Tiempo abre Ajustes. En **Tus lugares**, cada ubicación tiene
+El botón **Mis lugares**, junto al selector de Tiempo, abre directamente Tus lugares
+en Ajustes. **Cambiar alias** permite identificar cada ubicación (máximo 60 caracteres);
+dejarlo vacío recupera su nombre original. Los alias están en una tabla aditiva
+`location_aliases`, dentro del mismo SQLite y de sus snapshots, sin cambiar IDs,
+coordenadas ni la tabla original de lugares; el esquema sigue admitiendo rollback.
+
+En **Tus lugares**, cada ubicación tiene
 un botón **Quitar**: desactiva su recopilación sin borrar previsiones ni
 observaciones. **Lugares quitados → Recuperar** reactiva la misma ubicación con
 su archivo anterior, respetando el máximo de diez lugares activos. Se permite
 quitar todos los lugares; las ubicaciones iniciales no se vuelven a añadir solas.
+El aviso **Deshacer** recupera la última retirada de la sesión, incluido su alias
+y selección previa. La recuperación respeta el mismo límite de diez lugares.
+
+En Tiempo, tocar un día abre sus horas locales disponibles; **Ver próximas 24 horas**
+vuelve a la franja general. No cambia la temperatura de próxima hora de la portada.
 
 ## Configuración privada del acceso
 

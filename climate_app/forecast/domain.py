@@ -65,6 +65,11 @@ class Location:
     station_id: str | None = None
     station_name: str | None = None
     station_distance_km: float | None = None
+    alias: str | None = None
+
+    @property
+    def display_name(self):
+        return f"{self.alias} · {self.name}" if self.alias else self.name
 
 
 @dataclass

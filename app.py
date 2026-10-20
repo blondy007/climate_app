@@ -136,10 +136,16 @@ def main() -> None:
     from climate_app.forecast.access import private_view
     if private_view():
         st.caption("Google BigQuery · © 2024-6 Google LLC, whose machine learning models were used to create the experimental data made available under the following licence terms https://storage.googleapis.com/weathernext-public/terms-of-use.pdf. This data is intended for experimental modelling only and is not intended, validated, or approved for real world use.")
-    if st.session_state.get("last_main_view") != view:
+    scroll_target = st.session_state.pop("scroll_target", None)
+    if st.session_state.get("last_main_view") != view or scroll_target:
         st.session_state["last_main_view"] = view
         from streamlit.components.v1 import html
-        html('<script>requestAnimationFrame(()=>{const main=window.parent.document.querySelector("section.main");if(main)main.scrollTo(0,0);});</script>', height=0)
+        # Only fixed application anchors may be used as navigation targets.
+        target = scroll_target if scroll_target in ("places-section", "hourly-section") else None
+        generation = st.session_state.get("scroll_generation", 0) + 1
+        st.session_state["scroll_generation"] = generation
+        import json
+        html('<script>/* navigation ' + str(generation) + ' */requestAnimationFrame(()=>{const doc=window.parent.document;const target=' + json.dumps(target) + ';const anchor=target&&doc.getElementById(target);const main=doc.querySelector("section.main");if(anchor)anchor.scrollIntoView({block:"start"});else if(main)main.scrollTo(0,0);});</script>', height=0)
 
 
 if __name__ == "__main__":

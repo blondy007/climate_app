@@ -12,6 +12,74 @@ from climate_app.forecast.store import Store
 
 
 class AppTests(unittest.TestCase):
+    def test_duplicate_places_alias_and_undo_preserve_the_selected_archive(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "forecasts.sqlite3"
+            store = Store(path)
+            store.seed()
+            first, second = store.locations()
+            third_id = store.add_location(second.name, second.latitude + .01, second.longitude)
+            now = utcnow()
+            for location in store.locations():
+                store.save_forecast(location.id, Forecast("ecmwf", now, [dict(valid_time=now + timedelta(hours=2), temperature=21)]))
+            with patch.dict(os.environ, {"CLIMATE_FORECAST_DB": str(path)}):
+                app = AppTest.from_file(str(Path(__file__).parents[1] / "app.py")).run(timeout=30)
+                options = app.selectbox(key="forecast_location").options
+                self.assertEqual(len(options), len(set(options)))
+                self.assertTrue(any("40.4594" in label for label in options))
+                app.selectbox(key="forecast_location").set_value(second.id).run(timeout=30)
+                next(button for button in app.button if button.label == "Mis lugares").click().run(timeout=30)
+                app.text_input(key=f"alias_input_{second.id}").set_value("Trabajo")
+                [button for button in app.button if button.label == "Guardar alias"][1].click().run(timeout=30)
+                self.assertEqual(Store(path).locations()[1].alias, "Trabajo")
+                app.button(key=f"remove_place_{second.id}").click().run(timeout=30)
+                self.assertTrue(any(button.label == "Deshacer" for button in app.button))
+                app.button(key="undo_remove_place").click().run(timeout=30)
+                self.assertEqual(len(app.exception), 0, str(app.exception))
+                self.assertEqual(len(store.locations()), 3)
+                self.assertEqual(store.locations()[1].alias, "Trabajo")
+                app.radio(key="main_view").set_value("🌤️ Previsión").run(timeout=30)
+                self.assertEqual(app.selectbox(key="forecast_location").value, second.id)
+                self.assertIn("Trabajo · Torrejón de Ardoz", app.selectbox(key="forecast_location").options)
+                self.assertTrue(any('Trabajo · Torrejón de Ardoz' in element.value and 'hero-top' in element.value for element in app.markdown))
+                self.assertEqual(len(store.forecasts(second.id)), 1)
+
+    def test_day_selection_changes_hours_and_resets_when_context_no_longer_matches(self):
+        import pandas as pd
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "forecasts.sqlite3"
+            store = Store(path)
+            store.seed()
+            now = utcnow().replace(minute=0, second=0, microsecond=0)
+            for location in store.locations():
+                for provider in ("ecmwf", "icon"):
+                    store.save_forecast(location.id, Forecast(provider, now, [dict(valid_time=now + timedelta(hours=h), temperature=h, precipitation=0) for h in range(1, 361)]))
+            with patch.dict(os.environ, {"CLIMATE_FORECAST_DB": str(path)}):
+                app = AppTest.from_file(str(Path(__file__).parents[1] / "app.py")).run(timeout=30)
+                next(radio for radio in app.radio if radio.label == "Horizonte").set_value(360).run(timeout=30)
+                chosen = (pd.Timestamp(now).tz_convert("Europe/Madrid") + pd.Timedelta(days=5)).date().isoformat()
+                app.button(key=f"forecast_day_{chosen}").click().run(timeout=30)
+                self.assertEqual(app.session_state["forecast_selected_day"], chosen)
+                hours = next(element.value for element in app.markdown if 'id="hourly-section"' in element.value)
+                start = pd.Timestamp(chosen, tz="Europe/Madrid")
+                expected_hours = len(pd.date_range(start, start + pd.DateOffset(days=1), freq="h", inclusive="left"))
+                self.assertEqual(hours.count('class="hour-cell"'), expected_hours)
+                self.assertNotIn("Próximas horas", hours)
+                self.assertTrue(any("PRÓXIMA HORA" in element.value for element in app.markdown))
+                app.button(key="reset_forecast_day").click().run(timeout=30)
+                self.assertIsNone(app.session_state["forecast_selected_day"])
+                app.button(key=f"forecast_day_{chosen}").click().run(timeout=30)
+                next(radio for radio in app.radio if radio.label == "Horizonte").set_value(48).run(timeout=30)
+                self.assertIsNone(app.session_state["forecast_selected_day"])
+                today = pd.Timestamp(now).tz_convert("Europe/Madrid").date().isoformat()
+                app.button(key=f"forecast_day_{today}").click().run(timeout=30)
+                next(select for select in app.selectbox if select.label == "Previsión principal").set_value("icon").run(timeout=30)
+                self.assertIsNone(app.session_state["forecast_selected_day"])
+                app.button(key=f"forecast_day_{today}").click().run(timeout=30)
+                app.selectbox(key="forecast_location").set_value(store.locations()[1].id).run(timeout=30)
+                self.assertIsNone(app.session_state["forecast_selected_day"])
+                self.assertEqual(len(app.exception), 0, str(app.exception))
+
     def test_places_can_be_removed_and_restored_without_losing_archives(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "forecasts.sqlite3"

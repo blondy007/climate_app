@@ -37,7 +37,7 @@ h1,h2,h3 { letter-spacing:-.035em; }
 [data-testid="stMetricValue"] { font-size:30px; color:var(--ink); letter-spacing:-1px; }
 [data-testid="stPlotlyChart"] { overflow:hidden; border:1px solid var(--line); background:var(--surface); border-radius:20px; padding:5px; }
 [data-testid="stDataFrame"],[data-testid="stTable"] { background:var(--surface); border-radius:14px; overflow:hidden; }
-/* Streamlit 1.37 paints its virtualized table on canvas; keep large archives
+/* Streamlit paints its virtualized table on canvas; keep large archives
    virtualized rather than generating a per-cell Pandas Styler payload. */
 [data-testid="stDataFrame"] canvas { filter:var(--table-filter,none); }
 /* SVG colors also follow a live device-theme change while Automatic is selected. */
@@ -123,4 +123,30 @@ input::placeholder,textarea::placeholder { color:var(--muted); opacity:1; }
 [data-testid="stAlert"] { background:var(--soft); color:var(--ink); }
 [data-testid="stAlert"] p { color:var(--ink); }
 .place-label { padding:4px 0; }.place-label strong { display:block; font-size:15px; font-weight:600; color:var(--ink); }.place-label span { display:block; margin-top:5px; color:var(--muted); font-size:11px; overflow-wrap:anywhere; }
+/* Keep the location selector and its accessible settings button on one row. */
+.element-container:has(.location-toolbar-anchor) { display:none; }
+[data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) { flex-wrap:nowrap!important; gap:8px; align-items:center; }
+[data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor)>[data-testid="column"]:first-child { flex:1 1 0!important; min-width:0!important; width:auto!important; }
+[data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor)>[data-testid="column"]:last-child { flex:0 0 44px!important; min-width:44px!important; width:44px!important; }
+[data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) button { width:44px; height:42px; padding:0; }
+[data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) button p { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+[data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) button::before { content:""; width:20px; height:20px; background:currentColor; mask-size:contain; mask-position:center; mask-repeat:no-repeat; }
+.hero-top>span:first-child { min-width:0; overflow-wrap:anywhere; }
+#places-section,#hourly-section { scroll-margin-top:20px; }
+.element-container:has(#places-section) { height:0; margin:0; }
+/* Daily rows retain the illustrated layout, with real keyboard-accessible buttons. */
+[data-testid="stVerticalBlock"]:has(>.element-container .daily-anchor) { background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:20px 23px; gap:0; }
+[data-testid="stVerticalBlock"]:has(>.element-container .daily-anchor)>.element-container { width:100%!important; max-width:100%; }
+[data-testid="stMarkdown"]:has(.daily-anchor),[data-testid="stMarkdown"]:has(.card-footnote) { width:100%!important; max-width:100%; }
+[data-testid="stVerticalBlock"]:has(>.element-container .day-row) { position:relative; gap:0; border-radius:10px; }
+[data-testid="stVerticalBlock"]:has(>.element-container .day-row):hover,.day-row.selected-day { background:var(--soft); border-radius:10px; }
+[data-testid="stVerticalBlock"]:has(>.element-container .day-row):focus-within { outline:2px solid var(--accent); outline-offset:2px; }
+.element-container:has(.day-row)+.element-container { position:absolute; inset:0; height:100%; width:100%; z-index:1; }
+.element-container:has(.day-row)+.element-container [data-testid="stButton"] { height:100%; }
+.element-container:has(.day-row)+.element-container button,.element-container:has(.day-row)+.element-container button:hover { height:100%; min-height:44px; border:0; background:transparent; color:transparent; box-shadow:none; }
+.element-container:has(.day-row)+.element-container button p { color:transparent; }
+@media(max-width:640px) {
+ [data-testid="stVerticalBlock"]:has(>.element-container .daily-anchor) { border-radius:18px; padding:17px 16px; }
+ .daily-anchor.card-heading { align-items:flex-start; }.daily-anchor.card-heading>span { max-width:105px; line-height:1.4; text-align:right; }
+}
 @media(prefers-reduced-motion:reduce) { * { scroll-behavior:auto!important; transition:none!important; } }

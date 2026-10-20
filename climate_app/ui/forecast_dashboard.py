@@ -15,7 +15,7 @@ from climate_app.forecast.domain import HORIZONS, LABELS, instant, utcnow
 from climate_app.forecast.providers import geocode
 from climate_app.forecast.store import Store
 from climate_app.auth import owner_login
-from climate_app.ui.design import section, hero_html, weather_details, hourly_strip, daily_cards, empty_state, text
+from climate_app.ui.design import section, hero_html, weather_details, hourly_strip, daily_cards, day_label, empty_state, text
 from climate_app.ui.appearance import PALETTES, appearance_controls, palette
 
 METRICS = {"temperature": ("Temperatura", "°C"), "humidity": ("Humedad", "%"),
@@ -59,10 +59,39 @@ def configure_figure(fig, title, unit, height=330):
     return fig
 
 
+def location_labels(locations):
+    """Disambiguate repeated names even before the user gives them an alias."""
+    names = [loc.display_name for loc in locations]
+    return {loc.id: loc.display_name if names.count(loc.display_name) == 1 else
+            f"{loc.display_name} · {loc.latitude:.4f}, {loc.longitude:.4f}" for loc in locations}
+
+
+def restore_place(store, location):
+    store.add_location(location.name, location.latitude, location.longitude, location.timezone)
+    if st.session_state.get("removed_place", {}).get("id") == location.id:
+        removed = st.session_state.pop("removed_place")
+        if removed["selected"]:
+            st.session_state["selected_forecast_location"] = location.id
+            st.session_state["forecast_location"] = location.id
+    st.session_state["place_notice"] = f"{location.display_name} vuelve a estar en tus lugares. Su historial sigue disponible."
+    st.session_state["scroll_target"] = "places-section"
+
+
 def location_controls(store):
     notice = st.session_state.pop("place_notice", None)
     if notice:
         st.success(notice)
+    removed = st.session_state.get("removed_place")
+    if removed:
+        location = next((loc for loc in store.locations(include_inactive=True) if loc.id == removed["id"]), None)
+        if location:
+            st.success(f"Has quitado {location.display_name}. Su historial está a salvo.")
+            if st.button("Deshacer", key="undo_remove_place", help="Recupera el último lugar que has quitado"):
+                try:
+                    restore_place(store, location)
+                    st.rerun()
+                except ValueError as exc:
+                    st.warning(str(exc))
     locations = store.locations()
     st.caption(f"{len(locations)} de 10 lugares activos. Al quitar un lugar se detiene su recopilación; su historial se conserva y puedes recuperarlo abajo.")
     if not locations:
@@ -70,15 +99,29 @@ def location_controls(store):
     for location in locations:
         with st.container(border=True):
             info, action = st.columns([3, 1])
-            info.markdown(f'<div class="place-label"><strong>{text(location.name)}</strong><span>{location.latitude:.4f}, {location.longitude:.4f} · {text(location.timezone)}</span></div>', unsafe_allow_html=True)
+            info.markdown(f'<div class="place-label"><strong>{text(location.alias or location.name)}</strong><span>{text(location.name) + " · " if location.alias else ""}{location.latitude:.4f}, {location.longitude:.4f}</span></div>', unsafe_allow_html=True)
             if action.button("Quitar", key=f"remove_place_{location.id}", use_container_width=True,
-                             help=f"Quitar {location.name} de tus lugares sin borrar su historial"):
+                             help=f"Quitar {location.display_name} de tus lugares sin borrar su historial"):
                 store.deactivate(location.id)
-                if st.session_state.get("selected_forecast_location") == location.id:
+                selected = st.session_state.get("selected_forecast_location") == location.id
+                if selected:
                     st.session_state.pop("selected_forecast_location", None)
                     st.session_state.pop("forecast_location", None)
-                st.session_state["place_notice"] = f"{location.name} se ha quitado. Puedes recuperarlo en «Lugares quitados»."
+                st.session_state["removed_place"] = {"id": location.id, "selected": selected}
+                st.session_state["scroll_target"] = "places-section"
                 st.rerun()
+            with st.expander("Cambiar alias", expanded=False):
+                with st.form(f"alias_form_{location.id}"):
+                    alias = st.text_input("Alias", value=location.alias or "", max_chars=60,
+                                          placeholder="Casa, trabajo, playa…", key=f"alias_input_{location.id}")
+                    st.caption(f"Lugar original: {location.name}. Deja el alias vacío para volver a su nombre original.")
+                    if st.form_submit_button("Guardar alias"):
+                        try:
+                            store.set_alias(location.id, alias)
+                            st.session_state["place_notice"] = "Alias guardado. Las coordenadas y el historial se mantienen."
+                            st.rerun()
+                        except ValueError as exc:
+                            st.warning(str(exc))
     with st.expander("Añadir lugar"):
         st.caption("Hasta 10 lugares activos. Las ubicaciones y sus previsiones se guardan entre visitas.")
         with st.form("search_forecast_place"):
@@ -129,12 +172,11 @@ def location_controls(store):
             for location in inactive:
                 with st.container(border=True):
                     info, action = st.columns([3, 1])
-                    info.markdown(f"**{location.name}**")
+                    info.markdown(f'<div class="place-label"><strong>{text(location.display_name)}</strong><span>{location.latitude:.4f}, {location.longitude:.4f}</span></div>', unsafe_allow_html=True)
                     if action.button("Recuperar", key=f"restore_place_{location.id}", use_container_width=True,
-                                     disabled=len(locations) >= 10, help=f"Volver a añadir {location.name}"):
+                                     disabled=len(locations) >= 10, help=f"Volver a añadir {location.display_name}"):
                         try:
-                            store.add_location(location.name, location.latitude, location.longitude, location.timezone)
-                            st.session_state["place_notice"] = f"{location.name} vuelve a estar en tus lugares. Su historial sigue disponible."
+                            restore_place(store, location)
                             st.rerun()
                         except ValueError as exc:
                             st.warning(str(exc))
@@ -186,10 +228,31 @@ def forecast_view(store, location, frame):
     hero.markdown(hero_html(location, first, main, CHART_LABELS[provider], updated, stale), unsafe_allow_html=True)
     if stale:
         st.warning("Esta previsión tiene más de 9 horas. Consulta el estado de las fuentes en Ajustes.")
-    hourly_strip(main, location.timezone)
-    weather_details(first, direction(first.wind_direction))
     daily = daily_summary(main, location.timezone)
-    daily_cards(daily, main, location.timezone)
+    context = (location.id, provider)
+    if st.session_state.get("forecast_day_context") != context:
+        st.session_state["forecast_selected_day"] = None
+        st.session_state["forecast_day_context"] = context
+    selected_day = st.session_state.get("forecast_selected_day")
+    available_days = {day.isoformat() for day in daily.date}
+    if selected_day not in available_days:
+        selected_day = st.session_state["forecast_selected_day"] = None
+
+    def select_day(day):
+        st.session_state["forecast_selected_day"] = day
+        st.session_state["scroll_target"] = "hourly-section"
+
+    if selected_day:
+        day = pd.Timestamp(selected_day).date()
+        day_hours = main[main.valid_time.dt.tz_convert(location.timezone).dt.date == day]
+        hourly_strip(day_hours, location.timezone, title=f"{day_label(day, location.timezone)} · {day:%d/%m}", selected=True)
+    else:
+        hourly_strip(main, location.timezone)
+    reset_day = st.empty()
+    if selected_day:
+        reset_day.button("Ver próximas 24 horas", key="reset_forecast_day", on_click=select_day, args=(None,))
+    weather_details(first, direction(first.wind_direction))
+    daily_cards(daily, main, location.timezone, on_select=select_day, selected_day=selected_day)
 
     section("Mira un poco más allá", "Explora la evolución, contrasta modelos y pon el tiempo en contexto.", "chart")
     evolution, comparison, climate = st.tabs(["Evolución", "Comparar modelos", "Climatología"])
@@ -328,9 +391,13 @@ def render_forecast_dashboard(evaluation=False):
         preferred = st.session_state.get("selected_forecast_location")
         st.session_state["forecast_location"] = preferred if preferred in lookup else locations[0].id
     picker, manage = st.columns([4, 1])
-    location_id = picker.selectbox("Lugar", list(lookup), format_func=lambda key: lookup[key].name, key="forecast_location", label_visibility="collapsed")
+    picker.markdown('<span class="location-toolbar-anchor"></span>', unsafe_allow_html=True)
+    labels = location_labels(locations)
+    location_id = picker.selectbox("Lugar", list(lookup), index=list(lookup).index(st.session_state["forecast_location"]),
+                                   format_func=labels.get, key="forecast_location", label_visibility="collapsed")
     def open_settings():
         st.session_state["main_view"] = "⚙️ Ajustes"
+        st.session_state["scroll_target"] = "places-section"
     manage.button("Mis lugares", on_click=open_settings, use_container_width=True, help="Añadir, quitar o recuperar lugares en Ajustes")
     location = lookup[location_id]
     st.session_state["selected_forecast_location"] = location_id
@@ -352,6 +419,7 @@ def render_settings():
     st.markdown('<div class="page-intro"><h1>A tu manera.</h1><p>Tus lugares, tu acceso personal y las fuentes que hacen posible tu previsión.</p></div>', unsafe_allow_html=True)
     section("Apariencia", "Un aspecto cómodo a cualquier hora.", "sun")
     appearance_controls()
+    st.markdown('<span id="places-section"></span>', unsafe_allow_html=True)
     section("Tus lugares", "Añade, quita o recupera tus sitios favoritos.", "pin")
     location_controls(store)
     section("Tu cuenta", "Acceso personal a WeatherNext y al consenso completo.", "layers")
@@ -359,7 +427,7 @@ def render_settings():
     locations = store.locations()
     if locations:
         lookup = {loc.id: loc for loc in locations}
-        location_id = st.selectbox("Estado de las fuentes para", list(lookup), format_func=lambda key: lookup[key].name)
+        location_id = st.selectbox("Estado de las fuentes para", list(lookup), format_func=location_labels(locations).get)
         section("Detrás de la previsión", "Fuentes, estaciones y actualización automática.", "clock")
         provider_status(store, lookup[location_id])
     with st.expander("Fuentes, licencias y datos"):

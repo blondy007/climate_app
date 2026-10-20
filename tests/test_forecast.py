@@ -36,6 +36,30 @@ def forecast_row(provider, when, temp, fetched=NOW, **extra):
 
 
 class StorageTests(unittest.TestCase):
+    def test_alias_preserves_identity_archive_and_survives_backup_and_reactivation(self):
+        self.store.save_forecast(self.location, Forecast("gfs", NOW, [dict(valid_time=NOW + timedelta(hours=2), temperature=17)]))
+        self.store.save_observations(self.location, "08227", [dict(valid_time=NOW - timedelta(hours=1), temperature=16)])
+        self.store.set_alias(self.location, "  Casa  ")
+        restored = Store(self.store.backup())
+        location = restored.locations()[0]
+        self.assertEqual((location.id, location.name, location.alias, location.display_name), (self.location, "Madrid", "Casa", "Casa · Madrid"))
+        self.assertEqual(restored.forecasts(self.location, since=NOW).temperature.tolist(), [17])
+        self.assertEqual(restored.observations(self.location, since=NOW - timedelta(days=1)).temperature.tolist(), [16])
+        restored.deactivate(self.location)
+        restored.add_location("Madrid", 40.4, -3.7)
+        self.assertEqual(restored.locations()[0].alias, "Casa")
+        restored.set_alias(self.location, "")
+        self.assertEqual(restored.locations()[0].display_name, "Madrid")
+        with restored.connect() as conn:
+            self.assertEqual(len(conn.execute("SELECT * FROM locations").fetchone()), 9)
+
+    def test_alias_rejects_invalid_input_and_unknown_place(self):
+        for alias in ("x" * 61, "Casa\nTrabajo"):
+            with self.assertRaises(ValueError):
+                self.store.set_alias(self.location, alias)
+        with self.assertRaises(ValueError):
+            self.store.set_alias("missing", "Casa")
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

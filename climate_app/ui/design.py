@@ -91,6 +91,8 @@ def apply_design():
     for index, name in enumerate(("sun", "chart", "clock", "settings"), start=1):
         encoded = base64.b64encode(icon(name).encode()).decode()
         css += f'.element-container:has(.nav-anchor)+.element-container [data-baseweb="radio"]:nth-child({index})::before {{ mask-image:url("data:image/svg+xml;base64,{encoded}"); }}'
+    settings_icon = base64.b64encode(icon("settings").encode()).decode()
+    css += f'[data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) button::before {{mask-image:url("data:image/svg+xml;base64,{settings_icon}");}}'
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 
@@ -127,8 +129,8 @@ def hero_html(location, first, main, provider_label, updated, stale=False):
     interval = ""
     if pd.notna(first.temperature_p10) and pd.notna(first.temperature_p90):
         interval = f'<span class="hero-range">P10–P90 {value(first.temperature_p10,"°",1)} – {value(first.temperature_p90,"°",1)}</span>'
-    return f'''<section class="weather-hero sky-{kind}" aria-label="Previsión de {text(location.name)}">
-<div class="hero-top"><span>{icon("pin",16)} {text(location.name)}</span><span class="source-chip">{text(provider_label)}</span></div>
+    return f'''<section class="weather-hero sky-{kind}" aria-label="Previsión de {text(location.display_name)}">
+<div class="hero-top"><span>{icon("pin",16)} {text(location.display_name)}</span><span class="source-chip">{text(provider_label)}</span></div>
 <div class="hero-main"><div><p class="hero-eyebrow">PRÓXIMA HORA · {text(WEEKDAYS[local.weekday()])} {local:%H:%M}</p><div class="hero-value">{value(first.temperature,"°")}<small>C</small></div><h1>{text(condition)}</h1>{interval}<p class="hero-extremes">Próximas 24 h <strong>↑ {value(maximum,"°")} &nbsp; ↓ {value(minimum,"°")}</strong></p></div><div class="hero-art">{weather_svg(kind,220)}</div></div>
 <div class="hero-bottom"><span class="freshness {"stale" if stale else ""}"><i></i>{"Datos antiguos" if stale else "Actualizado"} {updated:%H:%M} · {updated:%d/%m}</span><span>Hora local · {text(location.timezone)}</span></div></section>'''
 
@@ -144,34 +146,47 @@ def weather_details(first, wind_direction):
     st.markdown(html + '</div>', unsafe_allow_html=True)
 
 
-def hourly_strip(main, timezone):
+def hourly_strip(main, timezone, title="Próximas horas", selected=False):
     cells = []
-    for _, row in main.head(24).iterrows():
+    samples = main if selected else main.head(24)
+    repeated_hours = samples.valid_time.dt.tz_convert(timezone).dt.strftime("%H:%M").duplicated(keep=False) if selected else pd.Series(False, index=samples.index)
+    for index, row in samples.iterrows():
         local = row.valid_time.tz_convert(timezone)
+        hour = local.strftime("%H:%M %Z" if repeated_hours.loc[index] else "%H:%M")
         kind, _ = weather_kind(row, timezone)
         rain = value(row.precip_probability,"%") if pd.notna(row.precip_probability) else value(row.precipitation," mm",1)
-        cells.append(f'<div class="hour-cell"><time>{local:%H:%M}</time>{weather_svg(kind,44)}<strong>{value(row.temperature,"°")}</strong><span>{text(rain)}</span></div>')
-    st.markdown('<section class="hourly-card"><div class="card-heading">' + icon("clock",18) + '<h2>Próximas horas</h2><span>Desliza para explorar</span></div><div class="hourly-scroll" tabindex="0" role="region" aria-label="Previsión horaria, desplazamiento horizontal">' + ''.join(cells) + '</div></section>', unsafe_allow_html=True)
+        cells.append(f'<div class="hour-cell"><time>{text(hour)}</time>{weather_svg(kind,44)}<strong>{value(row.temperature,"°")}</strong><span>{text(rain)}</span></div>')
+    note = f"{len(samples)} horas disponibles · Desliza" if selected else "Desliza para explorar"
+    st.markdown('<section id="hourly-section" class="hourly-card"><div class="card-heading">' + icon("clock",18) + '<h2>' + text(title) + '</h2><span>' + note + '</span></div><div class="hourly-scroll" tabindex="0" role="region" aria-label="Previsión horaria, desplazamiento horizontal">' + ''.join(cells) + '</div></section>', unsafe_allow_html=True)
 
 
-def daily_cards(daily, main, timezone):
+def day_label(day, timezone):
+    today = pd.Timestamp.now(tz=timezone).date()
+    return "Hoy" if day == today else "Mañana" if (day - today).days == 1 else WEEKDAYS[day.weekday()].capitalize()
+
+
+def daily_cards(daily, main, timezone, on_select, selected_day=None):
     if daily.empty:
         return
     low, high = daily.minimum.min(), daily.maximum.max()
     span = max(high - low, 1) if pd.notna(low) and pd.notna(high) else 1
-    today = pd.Timestamp.now(tz=timezone).date()
-    rows = []
-    for _, day in daily.iterrows():
-        label = "Hoy" if day.date == today else "Mañana" if (day.date - today).days == 1 else WEEKDAYS[day.date.weekday()].capitalize()
-        samples = main[main.valid_time.dt.tz_convert(timezone).dt.date == day.date]
-        representative = samples.iloc[len(samples)//2].copy()
-        representative["precipitation"] = day.precipitation
-        kind, condition = weather_kind(representative, timezone)
-        start = max(0, min(100, 100 * (day.minimum - low) / span)) if pd.notna(day.minimum) and pd.notna(low) else 0
-        width = max(3, min(100 - start, 100 * (day.maximum - day.minimum) / span)) if pd.notna(day.maximum) and pd.notna(day.minimum) else 0
-        rain = value(day.probability,"%") if pd.notna(day.probability) else value(day.precipitation," mm",1)
-        rows.append(f'<div class="day-row"><div><strong>{text(label)}</strong><small>{day.date:%d/%m}</small></div><span title="{text(condition)}">{weather_svg(kind,38)}</span><span class="day-rain">{text(rain)}</span><span class="day-low">{value(day.minimum,"°")}</span><span class="temperature-track"><i style="left:{start:.2f}%;width:{width:.2f}%"></i></span><strong class="day-high">{value(day.maximum,"°")}</strong></div>')
-    st.markdown('<section class="daily-card"><div class="card-heading">' + icon("layers",18) + '<h2>Los próximos días</h2><span>Mín. / Máx.</span></div>' + ''.join(rows) + '<p class="card-footnote">Las barras comparan las temperaturas previstas. Hoy y el último día pueden estar incompletos.</p></section>', unsafe_allow_html=True)
+    with st.container():
+        st.markdown('<div class="daily-anchor card-heading">' + icon("layers",18) + '<h2>Los próximos días</h2><span>Toca un día para ver sus horas</span></div>', unsafe_allow_html=True)
+        for _, day in daily.iterrows():
+            label = day_label(day.date, timezone)
+            samples = main[main.valid_time.dt.tz_convert(timezone).dt.date == day.date]
+            representative = samples.iloc[len(samples)//2].copy()
+            representative["precipitation"] = day.precipitation
+            kind, condition = weather_kind(representative, timezone)
+            start = max(0, min(100, 100 * (day.minimum - low) / span)) if pd.notna(day.minimum) and pd.notna(low) else 0
+            width = max(3, min(100 - start, 100 * (day.maximum - day.minimum) / span)) if pd.notna(day.maximum) and pd.notna(day.minimum) else 0
+            rain = value(day.probability,"%") if pd.notna(day.probability) else value(day.precipitation," mm",1)
+            with st.container():
+                active = " selected-day" if selected_day == day.date.isoformat() else ""
+                st.markdown(f'<div class="day-row{active}"><div><strong>{text(label)}</strong><small>{day.date:%d/%m}</small></div><span title="{text(condition)}">{weather_svg(kind,38)}</span><span class="day-rain">{text(rain)}</span><span class="day-low">{value(day.minimum,"°")}</span><span class="temperature-track"><i style="left:{start:.2f}%;width:{width:.2f}%"></i></span><strong class="day-high">{value(day.maximum,"°")}</strong></div>', unsafe_allow_html=True)
+                st.button(f"Ver horas de {label}, {day.date:%d/%m}", key=f"forecast_day_{day.date.isoformat()}",
+                          on_click=on_select, args=(day.date.isoformat(),), use_container_width=True)
+        st.markdown('<p class="card-footnote">Mínima / máxima y lluvia de las horas disponibles. Hoy y el último día pueden estar incompletos.</p>', unsafe_allow_html=True)
 
 
 def empty_state(title, description):

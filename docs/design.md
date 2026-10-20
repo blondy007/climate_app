@@ -27,6 +27,21 @@ El selector Automático / Claro / Oscuro recuerda la elección por navegador.
 El modo automático sigue el dispositivo; tarjetas, formularios, navegación y
 gráficos comparten la paleta. La gestión muestra cada lugar con su botón Quitar,
 y un apartado de lugares quitados permite recuperarlo conservando su archivo.
+El aviso de retirada ofrece Deshacer. Los alias distinguen sitios con nombres
+iguales; mientras no tengan alias, el selector añade coordenadas para diferenciarlos.
+La cabecera mantiene selector y botón de gestión en una fila también en móvil;
+el botón desplaza directamente a Tus lugares.
+
+Las filas diarias son botones accesibles con teclado y área táctil completa.
+Al elegir una se resaltan y se abre su franja horaria, con vuelta a las próximas
+24 horas. Solo aparecen las horas disponibles del día y horizonte elegidos.
+Los cambios de lugar o modelo reinician la selección; un horizonte que ya no
+incluye el día también la reinicia. Los días de 25 horas conservan ambas horas
+repetidas con su zona, y la portada sigue describiendo la próxima hora prevista.
+
+Streamlit se actualiza de 1.37.0 a 1.38.0 para corregir el fallo de su árbol de
+bloques que podía dejar la pantalla en blanco al cambiar la vista
+([corrección oficial](https://github.com/streamlit/streamlit/pull/9276)).
 
 En móvil la navegación queda al alcance del pulgar en la parte inferior. Los
 controles conservan interacción de teclado y foco visible. Las horas se presentan

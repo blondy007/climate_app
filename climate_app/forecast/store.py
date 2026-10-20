@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS locations (
  id TEXT PRIMARY KEY, name TEXT NOT NULL, latitude REAL NOT NULL, longitude REAL NOT NULL,
  timezone TEXT NOT NULL, station_id TEXT, station_name TEXT, station_distance_km REAL,
  active INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS location_aliases (
+ location_id TEXT PRIMARY KEY REFERENCES locations(id), alias TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS runs (
  id INTEGER PRIMARY KEY, location_id TEXT NOT NULL REFERENCES locations(id),
  provider TEXT NOT NULL, fetched_at TEXT NOT NULL, init_time TEXT, metadata TEXT NOT NULL,
@@ -89,9 +91,19 @@ class Store:
 
     def locations(self, include_inactive=False) -> list[Location]:
         with self.connect() as conn:
-            rows = conn.execute("SELECT * FROM locations" + ("" if include_inactive else " WHERE active=1")
-                                + " ORDER BY rowid").fetchall()
+            rows = conn.execute("SELECT l.*,a.alias FROM locations l LEFT JOIN location_aliases a ON a.location_id=l.id"
+                                + ("" if include_inactive else " WHERE l.active=1") + " ORDER BY l.rowid").fetchall()
         return [Location(**{key: row[key] for key in Location.__dataclass_fields__}) for row in rows]
+
+    def set_alias(self, location_id, alias):
+        alias = alias.strip()
+        if len(alias) > 60 or any(ord(char) < 32 for char in alias):
+            raise ValueError("El alias admite hasta 60 caracteres, sin saltos de línea")
+        with self.connect() as conn:
+            if not conn.execute("SELECT 1 FROM locations WHERE id=?", (location_id,)).fetchone():
+                raise ValueError("El lugar ya no está disponible")
+            conn.execute("""INSERT INTO location_aliases VALUES (?,?)
+                ON CONFLICT(location_id) DO UPDATE SET alias=excluded.alias""", (location_id, alias))
 
     def add_location(self, name, latitude, longitude, timezone="Europe/Madrid",
                      station_id=None, station_name=None, station_distance_km=None) -> str:

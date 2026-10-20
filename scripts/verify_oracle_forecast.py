@@ -46,6 +46,8 @@ import json,pathlib,sqlite3,tarfile,tempfile,shutil
 from climate_app.forecast.store import Store
 s=Store()
 snapshot=s.backup()
+with sqlite3.connect(snapshot) as source:
+    expected_aliases=source.execute('SELECT location_id,alias FROM location_aliases ORDER BY location_id').fetchall()
 root=pathlib.Path(tempfile.mkdtemp(prefix='climateapp-recovery-',dir='/tmp')).resolve()
 assert root.parent == pathlib.Path('/tmp') and root.name.startswith('climateapp-recovery-')
 archive=root/'climate-app-data.tar.gz'
@@ -63,15 +65,23 @@ with tarfile.open(archive,'r:gz') as t:
 c=sqlite3.connect(restored/'forecasts-backup.sqlite3')
 assert c.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
 counts={table:c.execute('SELECT count(*) FROM '+table).fetchone()[0] for table in ['locations','runs','points','observations']}
+assert c.execute('SELECT location_id,alias FROM location_aliases ORDER BY location_id').fetchall()==expected_aliases
 assert counts['runs']>0 and counts['points']>0 and counts['observations']>0
 c.close()
+# Exercise a nonempty alias only on the isolated restored copy, never on live data.
+isolated=Store(restored/'forecasts-backup.sqlite3')
+fixture_location=isolated.locations(include_inactive=True)[0].id
+isolated.set_alias(fixture_location,'Restore verification fixture')
+alias_snapshot=isolated.backup(root/'alias-recovery.sqlite3')
+assert next(l for l in Store(alias_snapshot).locations(include_inactive=True) if l.id==fixture_location).alias=='Restore verification fixture'
 historical=restored/'meteostat_master.csv'
 assert historical.exists() and historical.stat().st_size>100
 owner=s.path.parent/'auth-owner.json'
 owner_restored=owner.is_file() and (restored/owner.name).read_bytes()==owner.read_bytes()
 if owner.is_file(): assert owner_restored
 print(json.dumps({'restore':'ok','isolated_directory':str(root),'archive_bytes':archive.stat().st_size,
- 'counts':counts,'historical_csv_bytes':historical.stat().st_size,'owner_account_restored':owner_restored}))
+ 'counts':counts,'historical_csv_bytes':historical.stat().st_size,'owner_account_restored':owner_restored,
+ 'alias_persistence_verified':True}))
 """
 
 
