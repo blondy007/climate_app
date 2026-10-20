@@ -19,6 +19,11 @@ automáticas de previsiones ni de observaciones.
 
 ## Login del propietario
 
+El formulario está en **Ajustes → Tu cuenta → Acceso personal · WeatherNext**.
+La navegación inferior permanece accesible en móvil. La gestión de lugares y el
+estado de fuentes también están en Ajustes; los filtros y estaciones históricas
+se abren dentro de Histórico, sin depender de una barra lateral oculta.
+
 Después de publicar HTTPS, ejecuta `python -m climate_app.auth verify-https` en el
 contenedor. Comprueba el certificado y el endpoint antes de habilitar el login.
 También se admite `CLIMATE_HTTPS_VERIFIED=1` en Coolify tras una verificación externa.

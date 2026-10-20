@@ -64,7 +64,7 @@ def authenticated():
 
 
 def owner_login(store):
-    with st.expander("🔐 Acceso personal · WeatherNext", expanded=False):
+    with st.expander("Acceso personal · WeatherNext", expanded=False):
         if authenticated():
             st.success("Sesión personal iniciada")
             if st.button("Cerrar sesión"):

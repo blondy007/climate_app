@@ -15,12 +15,13 @@ from climate_app.forecast.domain import HORIZONS, LABELS, instant, utcnow
 from climate_app.forecast.providers import geocode
 from climate_app.forecast.store import Store
 from climate_app.auth import owner_login
+from climate_app.ui.design import section, hero_html, weather_details, hourly_strip, daily_cards, empty_state, text
 
 METRICS = {"temperature": ("Temperatura", "°C"), "humidity": ("Humedad", "%"),
            "precipitation": ("Precipitación", "mm"), "wind_speed": ("Viento", "km/h"),
            "wind_direction": ("Dirección del viento", "°")}
-COLORS = {"climateapp": "#0d9488", "ecmwf": "#6366f1", "icon": "#f59e0b",
-          "gfs": "#ec4899", "metno": "#3b82f6", "weathernext3": "#8b5cf6", "climateapp_private": "#0f766e"}
+COLORS = {"climateapp": "#197d8b", "ecmwf": "#647ba8", "icon": "#c99a48",
+          "gfs": "#bc7d8d", "metno": "#5c9e8a", "weathernext3": "#8776b1", "climateapp_private": "#245c65"}
 CHART_LABELS = {"climateapp": "Consenso", "climateapp_private": "Consenso + WN3",
                 "ecmwf": "ECMWF IFS", "icon": "ICON", "gfs": "GFS",
                 "metno": "MET Norway", "weathernext3": "WeatherNext 3"}
@@ -43,11 +44,15 @@ def local_times(series, timezone):
 
 
 def configure_figure(fig, title, unit, height=330):
-    fig.update_layout(title=dict(text=title, font=dict(size=16)), height=height,
-                      margin=dict(t=55, b=110, l=40, r=15),
+    fig.update_layout(title=dict(text=title, font=dict(size=15)), height=height,
+                      margin=dict(t=55, b=85, l=45, r=20),
+                      paper_bgcolor="white", plot_bgcolor="white",
+                      font=dict(family="Inter, Segoe UI, sans-serif", color="#193543", size=11),
                       hovermode="x unified", legend=dict(orientation="h", y=-0.25,
                                                         yanchor="top", x=0, font=dict(size=11)),
                       yaxis_title=unit, xaxis_title=None)
+    fig.update_xaxes(showgrid=False, zeroline=False)
+    fig.update_yaxes(gridcolor="#edf2f4", zeroline=False)
     return fig
 
 
@@ -127,101 +132,104 @@ def provider_status(store, location):
 
 
 def forecast_view(store, location, frame):
-    controls = st.columns([2, 2, 1])
-    hours = controls[0].radio("Horizonte", [48, 120, 240, 360], horizontal=True,
-                             format_func=lambda h: {48: "48 h", 120: "5 días", 240: "10 días", 360: "15 días"}[h])
+    hero = st.empty()
+    hours = st.radio("Horizonte", [48, 120, 240, 360], horizontal=True,
+                     format_func=lambda h: {48: "48 horas", 120: "5 días", 240: "10 días", 360: "15 días"}[h])
     providers = [p for p in LABELS if p in frame.provider.unique()]
-    provider = controls[1].selectbox("Previsión principal", providers, format_func=LABELS.get)
-    compare = controls[2].checkbox("Comparar modelos", value=True)
+    with st.expander("Elegir modelo de previsión"):
+        provider = st.selectbox("Previsión principal", providers, format_func=LABELS.get)
+        st.caption("El consenso combina los modelos disponibles. También puedes consultar cada fuente por separado.")
     now = pd.Timestamp(utcnow())
     frame = frame[(frame.valid_time > now) & (frame.valid_time <= now + pd.Timedelta(hours=hours))].copy()
     main = frame[frame.provider == provider].sort_values("valid_time")
     if main.empty:
-        st.info("Esta fuente no cubre el horizonte elegido.")
+        st.info("Esta fuente no cubre el horizonte elegido. Prueba otro modelo o un plazo más corto.")
         return
-    updated = main.fetched_at.max().tz_convert(location.timezone)
-    age = now - main.fetched_at.max()
-    end = main.valid_time.max().tz_convert(location.timezone)
-    st.caption(f"Descargado el {updated:%d/%m/%Y a las %H:%M} · Hora local: {location.timezone} · Cobertura hasta {end:%d/%m %H:%M}")
-    if age > pd.Timedelta(hours=9):
-        st.warning("Previsión antigua: revisa el estado de las fuentes. La fecha de descarga se conserva.")
     first = main.iloc[0]
-    st.markdown(f"### Próxima hora disponible · {first.valid_time.tz_convert(location.timezone):%d/%m %H:%M}")
-    cards = st.columns(4)
-    cards[0].metric("Temperatura prevista", number(first.temperature, "°C"))
-    if pd.notna(first.temperature_p10) and pd.notna(first.temperature_p90):
-        cards[0].caption(f"P10–P90: {first.temperature_p10:.1f}–{first.temperature_p90:.1f} °C")
-    cards[1].metric("Humedad", number(first.humidity, "%", 0))
-    cards[2].metric("Viento", number(first.wind_speed, "km/h"))
-    cards[2].caption(direction(first.wind_direction))
-    cards[3].metric("Precipitación", number(first.precipitation, "mm"))
-    cards[3].caption("Probabilidad: " + number(first.precip_probability, "%", 0))
-    if provider in ("climateapp", "climateapp_private"):
-        metadata = json.loads(first.metadata)
-        st.info("Consenso ponderado por aciertos anteriores." if metadata.get("trained") else
-                "Consenso inicial con pesos iguales. Se necesitan al menos 30 observaciones en 3 días por modelo, variable y plazo para aprender los pesos.")
+    updated = main.fetched_at.max().tz_convert(location.timezone)
+    stale = now - main.fetched_at.max() > pd.Timedelta(hours=9)
+    hero.markdown(hero_html(location, first, main, CHART_LABELS[provider], updated, stale), unsafe_allow_html=True)
+    if stale:
+        st.warning("Esta previsión tiene más de 9 horas. Consulta el estado de las fuentes en Ajustes.")
+    hourly_strip(main, location.timezone)
+    weather_details(first, direction(first.wind_direction))
+    daily = daily_summary(main, location.timezone)
+    daily_cards(daily, main, location.timezone)
+
+    section("Mira un poco más allá", "Explora la evolución, contrasta modelos y pon el tiempo en contexto.", "chart")
+    evolution, comparison, climate = st.tabs(["Evolución", "Comparar modelos", "Climatología"])
+    with evolution:
+        st.plotly_chart(temperature_figure(main, main, provider, location), use_container_width=True, config=CHART_CONFIG)
+        left, right = st.columns(2)
+        x = local_times(main.valid_time, location.timezone)
+        rain = make_subplots(specs=[[{"secondary_y": True}]])
+        rain.add_trace(go.Bar(x=x, y=main.precipitation, name="Lluvia · mm", marker_color="#509bb3", marker_line_width=0))
+        if main.precip_probability.notna().any():
+            rain.add_trace(go.Scatter(x=x, y=main.precip_probability, name="Probabilidad · %", line=dict(color="#c99a48", width=2)), secondary_y=True)
+            rain.update_yaxes(range=[0, 100], title="%", secondary_y=True)
+        left.plotly_chart(configure_figure(rain, "Lluvia por hora", "mm"), use_container_width=True, config=CHART_CONFIG)
+        wind = go.Figure()
+        wind.add_trace(go.Scatter(x=x, y=main.wind_speed, name="Viento", line=dict(color="#328783", width=2.5),
+                                 fill="tozeroy", fillcolor="rgba(50,135,131,.07)",
+                                 customdata=main.wind_direction.map(direction), hovertemplate="%{y:.1f} km/h · %{customdata}<extra></extra>"))
+        if main.wind_gust.notna().any():
+            wind.add_trace(go.Scatter(x=x, y=main.wind_gust, name="Rachas", line=dict(dash="dot", color="#c99a48", width=2)))
+        right.plotly_chart(configure_figure(wind, "Viento y rachas", "km/h"), use_container_width=True, config=CHART_CONFIG)
+        st.caption("Lluvia acumulada durante cada hora. Las probabilidades e intervalos solo aparecen si la fuente los proporciona.")
+    with comparison:
+        compare = st.checkbox("Comparar modelos", value=True)
+        st.plotly_chart(temperature_figure(main, frame if compare else main, provider, location), use_container_width=True, config=CHART_CONFIG)
+        if provider in ("climateapp", "climateapp_private"):
+            metadata = json.loads(first.metadata)
+            st.markdown('<div class="insight-card"><h3>' + ("Un consenso que aprende de sus aciertos" if metadata.get("trained") else "El consenso está empezando a aprender") + '</h3><p>' + ("La combinación se pondera según los errores observados anteriormente en este lugar y plazo." if metadata.get("trained") else "Por ahora, los modelos tienen el mismo peso. Los pesos se ajustan cuando cada fuente acumula al menos 30 observaciones en tres días por variable y plazo.") + '</p></div>', unsafe_allow_html=True)
+        st.caption("Las diferencias entre líneas muestran desacuerdo entre modelos. La banda P10–P90 es un intervalo nativo de la fuente, cuando existe; el desacuerdo entre modelos no es una probabilidad.")
+    with climate:
+        section("¿Es normal para esta época?", "Compara cada hora prevista con los mismos momentos de años anteriores.", "layers")
+        observations = store.observations(location.id, since=utcnow() - timedelta(days=6 * 366))
+        target_index = st.select_slider("Hora que quieres comparar", options=list(range(len(main))), value=min(23, len(main) - 1),
+                                        format_func=lambda i: main.iloc[i].valid_time.tz_convert(location.timezone).strftime("%d/%m %H:%M"))
+        target = main.iloc[target_index]
+        baseline = climatology(observations, target.valid_time, target.temperature, location.timezone)
+        if baseline:
+            columns = st.columns(3)
+            columns[0].metric("Previsión", number(target.temperature, "°C"))
+            columns[1].metric("Referencia histórica", number(baseline["mean"], "°C"), delta=f"{baseline['delta']:+.1f} °C previstos")
+            columns[2].metric("Percentil histórico", f"{baseline['percentile']:.0f}")
+            delta = baseline["delta"]
+            label = "Más cálido de lo habitual" if delta > 1 else "Más fresco de lo habitual" if delta < -1 else "En línea con años anteriores"
+            st.markdown(f'<div class="insight-card"><h3>{label}</h3><p>La previsión está {abs(delta):.1f} °C {"por encima" if delta >= 0 else "por debajo"} de la media de la muestra comparable.</p></div>', unsafe_allow_html=True)
+            st.caption(f"{baseline['n']} observaciones · Años {', '.join(map(str, baseline['years']))} · Misma hora local y fechas ±15 días. Es una referencia de la muestra disponible, no una normal climatológica de 30 años.")
+        else:
+            st.info("La referencia histórica se está preparando. Aparecerá cuando haya suficientes observaciones de años anteriores para esa fecha y hora.")
+        station_caption(location)
+    with st.expander("Tablas completas y descargas"):
+        st.caption("La lluvia diaria suma las horas disponibles; la probabilidad diaria mostrada es la máxima horaria, no la probabilidad de lluvia durante todo el día.")
+        daily_table = daily.rename(columns={"date": "Día", "minimum": "Mínima °C", "maximum": "Máxima °C",
+            "precipitation": "Lluvia mm", "wind": "Viento máximo km/h", "gust": "Racha máxima km/h",
+            "probability": "Prob. horaria máx. %", "rain_hours": "Horas con dato de lluvia", "temperature_hours": "Horas previstas"}).round(2)
+        st.dataframe(daily_table, hide_index=True, use_container_width=True)
+        export = main[["valid_time", "temperature", "humidity", "precipitation", "wind_speed", "wind_direction", "wind_gust", "precip_probability"]].copy()
+        export["valid_time"] = export.valid_time.dt.tz_convert(location.timezone)
+        for source, label in (("source_init_time", "Pasada superficie (UTC)"), ("temperature_init_time", "Pasada temperatura (UTC)")):
+            if source in main and main[source].notna().any():
+                export[label] = main[source]
+        st.dataframe(export.rename(columns={"valid_time": "Hora local", **{key: val[0] for key, val in METRICS.items()}}), use_container_width=True, hide_index=True)
+        if provider != "weathernext3":
+            st.download_button("Descargar CSV", export.to_csv(index=False).encode("utf-8-sig"), "climateapp-prevision.csv", "text/csv")
+
+
+def temperature_figure(main, comparison, provider, location):
     fig = go.Figure()
     if main.temperature_p10.notna().any() and main.temperature_p90.notna().any():
         fig.add_trace(go.Scatter(x=local_times(main.valid_time, location.timezone), y=main.temperature_p90,
                                 mode="lines", line=dict(width=0), showlegend=False, hoverinfo="skip"))
         fig.add_trace(go.Scatter(x=local_times(main.valid_time, location.timezone), y=main.temperature_p10,
-                                mode="lines", line=dict(width=0), fill="tonexty", fillcolor="rgba(139,92,246,.18)",
-                                name="P10–P90 nativo"))
-    for source in (frame if compare else main).provider.unique():
-        data = frame[frame.provider == source]
+                                mode="lines", line=dict(width=0), fill="tonexty", fillcolor="rgba(80,155,179,.15)", name="P10–P90 nativo"))
+    for source in comparison.provider.unique():
+        data = comparison[comparison.provider == source]
         fig.add_trace(go.Scatter(x=local_times(data.valid_time, location.timezone), y=data.temperature,
-                                name=CHART_LABELS.get(source, source), line=dict(color=COLORS[source], width=3 if source == provider else 1),
-                                connectgaps=False))
-    st.plotly_chart(configure_figure(fig, "Temperatura prevista", "°C", 430), use_container_width=True, config=CHART_CONFIG)
-    st.caption("La banda P10–P90 solo aparece cuando la fuente la proporciona. La separación entre líneas muestra desacuerdo entre modelos y no es un intervalo probabilístico.")
-    left, right = st.columns(2)
-    rain = make_subplots(specs=[[{"secondary_y": True}]])
-    x = local_times(main.valid_time, location.timezone)
-    rain.add_trace(go.Bar(x=x, y=main.precipitation, name="Precipitación (mm)", marker_color="#3b82f6"))
-    if main.precip_probability.notna().any():
-        rain.add_trace(go.Scatter(x=x, y=main.precip_probability, name="Probabilidad (%)", line=dict(color="#8b5cf6")), secondary_y=True)
-        rain.update_yaxes(range=[0, 100], title="%", secondary_y=True)
-    left.plotly_chart(configure_figure(rain, "Precipitación por hora", "mm"), use_container_width=True, config=CHART_CONFIG)
-    wind = go.Figure()
-    wind.add_trace(go.Scatter(x=x, y=main.wind_speed, name="Sostenido", line=dict(color="#0d9488"),
-                             customdata=main.wind_direction.map(direction), hovertemplate="%{y:.1f} km/h · %{customdata}"))
-    if main.wind_gust.notna().any():
-        wind.add_trace(go.Scatter(x=x, y=main.wind_gust, name="Rachas", line=dict(dash="dot", color="#f59e0b")))
-    right.plotly_chart(configure_figure(wind, "Viento y rachas", "km/h"), use_container_width=True, config=CHART_CONFIG)
-    st.markdown("### Previsión diaria")
-    daily = daily_summary(main, location.timezone)
-    daily = daily.rename(columns={"date": "Día", "minimum": "Mínima °C", "maximum": "Máxima °C",
-        "precipitation": "Lluvia mm", "wind": "Viento máximo km/h", "gust": "Racha máxima km/h",
-        "probability": "Prob. horaria máx. %", "rain_hours": "Horas con dato de lluvia", "temperature_hours": "Horas previstas"})
-    daily = daily.round({"Mínima °C": 1, "Máxima °C": 1, "Lluvia mm": 2,
-                         "Viento máximo km/h": 1, "Racha máxima km/h": 1, "Prob. horaria máx. %": 0})
-    st.dataframe(daily, hide_index=True, use_container_width=True)
-    st.caption("Hoy y el último día pueden estar incompletos. La lluvia suma solo horas disponibles; la probabilidad mostrada es la máxima horaria, no la probabilidad diaria.")
-    st.markdown("### Comparación con la climatología local")
-    observations = store.observations(location.id, since=utcnow() - timedelta(days=6 * 366))
-    target_index = st.select_slider("Hora que quieres comparar", options=list(range(len(main))), value=min(23, len(main) - 1),
-                                    format_func=lambda i: main.iloc[i].valid_time.tz_convert(location.timezone).strftime("%d/%m %H:%M"))
-    target = main.iloc[target_index]
-    baseline = climatology(observations, target.valid_time, target.temperature, location.timezone)
-    if baseline:
-        columns = st.columns(3)
-        columns[0].metric("Previsión", number(target.temperature, "°C"))
-        columns[1].metric("Media de años anteriores", number(baseline["mean"], "°C"), delta=f"{baseline['delta']:+.1f} °C previstos")
-        columns[2].metric("Percentil histórico", f"{baseline['percentile']:.0f}")
-        st.caption(f"{baseline['n']} observaciones · Años {', '.join(map(str, baseline['years']))} · Misma hora local y fechas ±15 días. Es una referencia de la muestra disponible, no una normal climatológica de 30 años.")
-    else:
-        st.info("Todavía no hay suficientes observaciones de años anteriores para esa fecha y hora. El recolector descarga la referencia histórica automáticamente cuando la estación dispone de ella.")
-    station_caption(location)
-    with st.expander("Tabla horaria y descarga"):
-        export = main[["valid_time", "temperature", "humidity", "precipitation", "wind_speed", "wind_direction", "wind_gust", "precip_probability"]].copy()
-        export["valid_time"] = export.valid_time.dt.tz_convert(location.timezone)
-        for source, label in (("source_init_time", "Pasada superficie (UTC)"),
-                              ("temperature_init_time", "Pasada temperatura (UTC)")):
-            if source in main and main[source].notna().any():
-                export[label] = main[source]
-        st.dataframe(export.rename(columns={"valid_time": "Hora local", **{key: value[0] for key, value in METRICS.items()}}), use_container_width=True, hide_index=True)
-        if provider != "weathernext3":
-            st.download_button("Descargar CSV", export.to_csv(index=False).encode("utf-8-sig"), "climateapp-prevision.csv", "text/csv")
+                                name=CHART_LABELS.get(source, source), line=dict(color=COLORS[source], width=3 if source == provider else 1.6), connectgaps=False))
+    return configure_figure(fig, "Temperatura · hora local", "°C", 370)
 
 
 def station_caption(location):
@@ -233,7 +241,7 @@ def station_caption(location):
 
 
 def evaluation_view(store, location):
-    st.markdown("### Qué modelos aciertan en este lugar")
+    st.markdown('<div class="page-intro"><h1>La previsión, a prueba.</h1><p>Descubre qué modelos aciertan más en tu lugar, comparando lo que anunciaron con lo que midió la estación.</p></div>', unsafe_allow_html=True)
     options = st.columns(3)
     days = options[0].selectbox("Ventana de evaluación", [30, 60, 90], index=2, format_func=lambda n: f"Últimos {n} días")
     variable = options[1].selectbox("Variable", list(METRICS), format_func=lambda key: METRICS[key][0])
@@ -244,13 +252,17 @@ def evaluation_view(store, location):
     result = scores(archive, observations, common_only=common)
     station_caption(location)
     if result.empty:
-        st.info("La evaluación empieza cuando las previsiones archivadas se cumplen y la estación publica observaciones. No se usan previsiones reconstruidas después del resultado.")
+        empty_state("Los aciertos se ganan con el tiempo", "Ya estamos guardando las previsiones. Cuando se cumplan y lleguen las observaciones de la estación, aquí verás qué modelos aciertan más. Sin resultados inventados ni previsiones reconstruidas después.")
         return
     selected = result[result.variable == variable].copy()
     if selected.empty:
         st.info("La estación todavía no aporta observaciones suficientes de esta variable.")
         return
     unit = METRICS[variable][1]
+    cards = st.columns(3)
+    cards[0].metric("Modelos evaluados", selected.provider.nunique())
+    cards[1].metric("Comparaciones", f"{selected.n.sum():,}".replace(",", "."))
+    cards[2].metric("Plazos de antelación", selected.horizon.nunique())
     selected["model"] = selected.provider.map(LABELS)
     fig = go.Figure()
     for provider, group in selected.groupby("provider"):
@@ -272,33 +284,44 @@ def evaluation_view(store, location):
 def render_forecast_dashboard(evaluation=False):
     store = Store()
     store.seed()
-    st.title("ClimateApp")
-    st.caption("Previsión, modelos y clima local · Uso personal · Coste adicional 0 €")
-    owner_login(store)
-    if private_view():
-        st.caption("Sesión personal · WeatherNext y consenso completo para uso personal")
-    location_controls(store)
     locations = store.locations()
     if not locations:
-        st.info("Añade un lugar para empezar.")
+        empty_state("Tu próximo lugar favorito", "Ve a Ajustes y añade un lugar para empezar a explorar su tiempo.")
         return
     lookup = {loc.id: loc for loc in locations}
     if st.session_state.get("forecast_location") not in lookup:
         st.session_state["forecast_location"] = locations[0].id
-    location_id = st.selectbox("Lugar", list(lookup), format_func=lambda key: lookup[key].name, key="forecast_location")
+    location_id = st.selectbox("Lugar", list(lookup), format_func=lambda key: lookup[key].name, key="forecast_location", label_visibility="collapsed")
     location = lookup[location_id]
-    if st.button("Actualizar vista", help="Lee las descargas del recolector sin aumentar las consultas a los proveedores"):
-        st.rerun()
-    provider_status(store, location)
     if evaluation:
         evaluation_view(store, location)
     else:
         frame = visible_forecasts(store.forecasts(location.id, since=utcnow()))
         if frame.empty:
-            st.info("Preparando la primera previsión. El recolector consultará automáticamente las fuentes gratuitas.")
+            empty_state("Estamos mirando al cielo", "La primera previsión se está preparando. Las fuentes se actualizan automáticamente, también cuando no tienes la app abierta.")
         else:
             forecast_view(store, location, frame)
-    st.divider()
-    st.markdown("Fuentes abiertas: [Open-Meteo](https://open-meteo.com/) · ECMWF · DWD · NOAA · [MET Norway](https://www.met.no/en) · [Meteostat](https://meteostat.net/). [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); conversiones de unidades y agregaciones realizadas por ClimateApp.")
+    if st.button("Actualizar vista", help="Lee las descargas del recolector sin aumentar las consultas a los proveedores"):
+        st.rerun()
+
+
+def render_settings():
+    store = Store()
+    store.seed()
+    st.markdown('<div class="page-intro"><h1>A tu manera.</h1><p>Tus lugares, tu acceso personal y las fuentes que hacen posible tu previsión.</p></div>', unsafe_allow_html=True)
+    section("Tu cuenta", "Acceso personal a WeatherNext y al consenso completo.", "layers")
+    owner_login(store)
+    section("Tus lugares", "Añade una ciudad o un rincón que te importe.", "pin")
+    location_controls(store)
+    locations = store.locations()
+    if locations:
+        lookup = {loc.id: loc for loc in locations}
+        location_id = st.selectbox("Estado de las fuentes para", list(lookup), format_func=lambda key: lookup[key].name)
+        section("Detrás de la previsión", "Fuentes, estaciones y actualización automática.", "clock")
+        provider_status(store, lookup[location_id])
+    with st.expander("Fuentes, licencias y datos"):
+        st.markdown("[Open-Meteo](https://open-meteo.com/) · ECMWF · DWD · NOAA · [MET Norway](https://www.met.no/en) · [Meteostat](https://meteostat.net/). [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). ClimateApp realiza conversiones de unidades y agregaciones.")
+        st.caption("Los iconos resumen la nubosidad y precipitación disponibles; no sustituyen avisos oficiales. La temperatura destacada es una previsión de la próxima hora disponible, no una medición actual. Los datos ausentes se muestran con una raya.")
+        st.caption("Aplicación de uso personal y coste adicional 0 €. Las previsiones y observaciones se conservan automáticamente sin necesidad de visitar la web.")
     if private_view():
         st.caption("Google BigQuery · © 2024-6 Google LLC, whose machine learning models were used to create the experimental data made available under the following licence terms https://storage.googleapis.com/weathernext-public/terms-of-use.pdf. This data is intended for experimental modelling only and is not intended, validated, or approved for real world use.")

@@ -33,7 +33,7 @@ pruebas de pago, recursos OCI ni APIs comerciales.
   observaciones reales, referencia de cinco años, evaluación, consenso y login.
 - Prueba real aislada: cuatro modelos y unas 43.000 observaciones por cada uno
   de los dos lugares, con datos recientes y backup SQLite consistente.
-- 29 pruebas pasan, incluyendo login/logout, aislamiento de WeatherNext, histórico,
+- 32 pruebas pasan, incluyendo login/logout, aislamiento de WeatherNext, histórico,
   errores, consenso, unidades, filtrado de modelos, cuotas, límites de BigQuery y
   restauración SQLite con procedencia por hora y compatibilidad de rollback.
 - APIs reales verificadas: ECMWF, ICON, GFS y MET Norway. GFS ofrece probabilidad
@@ -49,8 +49,12 @@ pruebas de pago, recursos OCI ni APIs comerciales.
 - Cuenta del propietario configurada y verificada sin mostrar contraseña ni hash.
 - La gestión de estaciones y umbrales conserva la autorización pública previa
   del propietario. WeatherNext y el consenso completo exigen la sesión personal.
-- La siguiente revisión conserva la pasada y celda nativas por cada hora de
+- La revisión conserva la pasada y celda nativas por cada hora de
   WeatherNext y evita replicar metadatos JSON al evaluar meses de archivo.
+- Rediseño completo de UI/UX con referencias Apple Weather, CARROT y Windy:
+  portada, iconos SVG locales, horas desplazables, rangos diarios, navegación
+  inferior móvil, ajustes propios y análisis avanzado organizado en vistas.
+  Verificado en 320, 390 y 1280 px, con datos sintéticos locales para la previsualización.
 - El propietario rechazó Tailscale para acceder a la app: se implementa login en
   la web HTTPS. Tailscale queda reservado a administración de la VPS.
 - Pendiente externo: acceso WeatherNext aprobado y credenciales de runtime

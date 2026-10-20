@@ -15,6 +15,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py ./
+COPY .streamlit/config.toml ./.streamlit/config.toml
 COPY climate_app ./climate_app
 COPY data ./seed-data
 COPY docker-entrypoint.sh ./

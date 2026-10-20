@@ -34,8 +34,9 @@ def _sanitize_state(key: str, options: list, fallback: list | None = None) -> li
 
 
 def _multiselect_with_state(
-    *, label: str, options: list, state_key: str, widget_key: str, fallback: list | None = None
+    *, label: str, options: list, state_key: str, widget_key: str, fallback: list | None = None, panel=None
 ) -> list:
+    panel = panel if panel is not None else st.sidebar
     available = list(options)
     base = fallback if fallback is not None else available
     current_state = _sanitize_state(state_key, available, base)
@@ -47,7 +48,7 @@ def _multiselect_with_state(
         if sanitized_widget != st.session_state[widget_key]:
             st.session_state[widget_key] = sanitized_widget
 
-    selection = st.sidebar.multiselect(
+    selection = panel.multiselect(
         label,
         options=available,
         key=widget_key,
@@ -59,10 +60,11 @@ def _multiselect_with_state(
     return selection
 
 
-def _quick_select_buttons(cities_all: list) -> None:
+def _quick_select_buttons(cities_all: list, panel=None) -> None:
+    panel = panel if panel is not None else st.sidebar
     if not cities_all:
         return
-    container = st.sidebar.container()
+    container = panel.container()
     container.markdown("_Accesos rápidos_")
     cols = container.columns(min(3, max(1, len(cities_all))))
     for idx, city in enumerate(cities_all):
@@ -86,7 +88,9 @@ def render_sidebar(
     min_downloadable_date: date,
     today: date,
     initial_range: Tuple[date, date],
+    panel=None,
 ) -> Tuple[FilterSelections, Dict[str, Dict[str, float]]]:
+    panel = panel if panel is not None else st.sidebar
     months_all = (
         list(df_base["Mes"].cat.categories)
         if "Mes" in df_base.columns and isinstance(df_base["Mes"].dtype, pd.CategoricalDtype)
@@ -100,20 +104,21 @@ def render_sidebar(
 
     sidebar_threshold_defaults = build_thresholds(cities_all, stored_thresholds)
 
-    st.sidebar.header("Filtros")
-    st.sidebar.subheader("Ciudades y agregación")
+    panel.header("Filtros")
+    panel.subheader("Ciudades y agregación")
     cities_selected = _multiselect_with_state(
         label="Ciudad(es)",
         options=cities_all,
         state_key="cities_filter",
         widget_key="cities_filter_widget",
         fallback=cities_all,
+        panel=panel,
     )
-    _quick_select_buttons(cities_all)
+    _quick_select_buttons(cities_all, panel=panel)
 
     agg_keys = list(AGG_FUNCTIONS.keys())
     default_agg_index = agg_keys.index("mediana") if "mediana" in agg_keys else 0
-    agg_option = st.sidebar.selectbox(
+    agg_option = panel.selectbox(
         "Agregación",
         options=agg_keys,
         index=default_agg_index,
@@ -121,11 +126,11 @@ def render_sidebar(
         key="agg_option",
     )
 
-    st.sidebar.subheader("Fechas y meses")
+    panel.subheader("Fechas y meses")
     stored_range = _normalize_date_range(
         st.session_state.get("date_range_filter", initial_range), initial_range
     )
-    date_input_value = st.sidebar.date_input(
+    date_input_value = panel.date_input(
         "Rango de fechas",
         value=stored_range,
         min_value=min_downloadable_date,
@@ -138,7 +143,7 @@ def render_sidebar(
         st.session_state["date_range_filter"] = date_filter_value
 
     _sanitize_state("months_filter", months_all)
-    month_buttons = st.sidebar.columns(4)
+    month_buttons = panel.columns(4)
     spring_months = {"Marzo", "Abril", "Mayo"}
     summer_months = {"Junio", "Julio", "Agosto"}
     autumn_months = {"Septiembre", "Octubre", "Noviembre"}
@@ -155,7 +160,7 @@ def render_sidebar(
     if month_buttons[3].button("Invierno", use_container_width=True):
         st.session_state["months_filter"] = [m for m in months_all if m in winter_months]
         st.rerun()
-    if st.sidebar.button("Todos los meses", key="months_all_btn", use_container_width=True):
+    if panel.button("Todos los meses", key="months_all_btn", use_container_width=True):
         st.session_state["months_filter"] = months_all.copy()
         st.rerun()
 
@@ -165,11 +170,12 @@ def render_sidebar(
         state_key="months_filter",
         widget_key="months_filter_widget",
         fallback=months_all,
+        panel=panel,
     )
 
-    st.sidebar.subheader("Horas")
+    panel.subheader("Horas")
     _sanitize_state("hours_filter", hours_all)
-    hour_buttons = st.sidebar.columns(3)
+    hour_buttons = panel.columns(3)
     if hour_buttons[0].button("Horas día (06-18)", use_container_width=True):
         st.session_state["hours_filter"] = [
             h for h in hours_all if 6 <= int(h.split(":")[0]) <= 18
@@ -190,28 +196,30 @@ def render_sidebar(
         state_key="hours_filter",
         widget_key="hours_filter_widget",
         fallback=hours_all,
+        panel=panel,
     )
 
-    st.sidebar.subheader("Escenarios")
+    panel.subheader("Escenarios")
     escenario_selected = _multiselect_with_state(
         label="Escenario(s)",
         options=SCENARIO_OPTIONS,
         state_key="scenario_filter",
         widget_key="scenario_filter_widget",
         fallback=["Todos"],
+        panel=panel,
     )
 
-    show_distribution = st.sidebar.checkbox(
+    show_distribution = panel.checkbox(
         "Mostrar gráfico de distribución", value=False, key="show_distribution_toggle"
     )
 
-    st.sidebar.header("Gestión de estaciones")
-    station_query = st.sidebar.text_input("Nombre o ciudad", key="station_query")
+    panel.header("Gestión de estaciones")
+    station_query = panel.text_input("Nombre o ciudad", key="station_query")
     country_index = COUNTRY_OPTIONS.index("ES") if "ES" in COUNTRY_OPTIONS else 0
-    station_country = st.sidebar.selectbox(
+    station_country = panel.selectbox(
         "País", options=COUNTRY_OPTIONS, index=country_index, key="country_select"
     )
-    date_range_download = st.sidebar.date_input(
+    date_range_download = panel.date_input(
         "Rango de fechas (descarga)",
         value=default_range_value,
         min_value=min_downloadable_date,
@@ -265,27 +273,27 @@ def render_sidebar(
         load_master_csv.clear()
         st.rerun()
 
-    if st.sidebar.button("Buscar estaciones", key="search_button"):
+    if panel.button("Buscar estaciones", key="search_button"):
         try:
             results = search_stations(station_query, station_country)
             st.session_state["station_search_results"] = results
             if results.empty:
-                st.sidebar.info("Sin resultados para la búsqueda realizada.")
+                panel.info("Sin resultados para la búsqueda realizada.")
         except Exception as exc:  # noqa: BLE001
             st.session_state["station_search_results"] = pd.DataFrame()
-            st.sidebar.error(f"Error al buscar estaciones: {exc}")
+            panel.error(f"Error al buscar estaciones: {exc}")
 
     results_df = st.session_state.get("station_search_results", pd.DataFrame())
     if not results_df.empty:
-        st.sidebar.dataframe(results_df, use_container_width=True)
+        panel.dataframe(results_df, use_container_width=True)
         station_labels = [station_select_label(row) for _, row in results_df.iterrows()]
-        selection_idx = st.sidebar.selectbox(
+        selection_idx = panel.selectbox(
             "Estación encontrada",
             options=range(len(results_df)),
             format_func=lambda idx: station_labels[idx],
             key="station_search_select",
         )
-        if st.sidebar.button("Añadir estación al maestro", key="add_searched_station"):
+        if panel.button("Añadir estación al maestro", key="add_searched_station"):
             station_id = str(results_df.iloc[selection_idx]["id"]) if "id" in results_df.columns else None
             station_name = results_df.iloc[selection_idx].get("name") if "name" in results_df.columns else None
             if not station_id:
@@ -296,10 +304,10 @@ def render_sidebar(
                 st.rerun()
             enqueue_station_download(station_id, station_name)
 
-    st.sidebar.markdown("#### Añadir estación por ID")
-    station_id_manual = st.sidebar.text_input("ID Meteostat (manual)", key="manual_station_id")
-    station_name_manual = st.sidebar.text_input("Nombre manual (opcional)", key="manual_station_name")
-    if st.sidebar.button("Añadir por ID", key="btn_add_manual_station"):
+    panel.markdown("#### Añadir estación por ID")
+    station_id_manual = panel.text_input("ID Meteostat (manual)", key="manual_station_id")
+    station_name_manual = panel.text_input("Nombre manual (opcional)", key="manual_station_name")
+    if panel.button("Añadir por ID", key="btn_add_manual_station"):
         enqueue_station_download(station_id_manual, station_name_manual or None)
 
     existing_options_map: Dict[str, tuple] = {}
@@ -312,23 +320,23 @@ def render_sidebar(
             existing_options_map[label] = (code, label_name or None)
 
     if existing_options_map:
-        st.sidebar.markdown("#### Actualizar estación ya descargada")
-        existing_label = st.sidebar.selectbox(
+        panel.markdown("#### Actualizar estación ya descargada")
+        existing_label = panel.selectbox(
             "Estaciones en maestro",
             options=sorted(existing_options_map.keys()),
             key="existing_station_select",
         )
-        if st.sidebar.button("Actualizar estación existente", key="btn_update_existing_station"):
+        if panel.button("Actualizar estación existente", key="btn_update_existing_station"):
             station_id_existing, station_name_existing = existing_options_map[existing_label]
             enqueue_station_download(station_id_existing, station_name_existing)
 
-        st.sidebar.markdown("#### Eliminar estación del maestro")
-        remove_label = st.sidebar.selectbox(
+        panel.markdown("#### Eliminar estación del maestro")
+        remove_label = panel.selectbox(
             "Estación a eliminar",
             options=sorted(existing_options_map.keys()),
             key="remove_station_select",
         )
-        if st.sidebar.button("Eliminar estación", key="btn_remove_station"):
+        if panel.button("Eliminar estación", key="btn_remove_station"):
             station_id_remove, _ = existing_options_map[remove_label]
             removed_rows = remove_station_from_master(station_id_remove)
             if removed_rows > 0:
@@ -345,12 +353,12 @@ def render_sidebar(
             load_master_csv.clear()
             st.rerun()
 
-    st.sidebar.header("Configuración de umbrales")
+    panel.header("Configuración de umbrales")
     thresholds_map: Dict[str, Dict[str, float]] = {}
     for city in cities_all:
         base = sidebar_threshold_defaults.get(city) or {"calma": 10.0, "ventoso": 25.0}
         city_hash = hashlib.md5(city.encode("utf-8")).hexdigest()
-        calma_value = st.sidebar.number_input(
+        calma_value = panel.number_input(
             f"{city} - Calma",
             min_value=0.0,
             max_value=500.0,
@@ -359,7 +367,7 @@ def render_sidebar(
             format="%.1f",
             key=f"calma_{city_hash}",
         )
-        ventoso_value = st.sidebar.number_input(
+        ventoso_value = panel.number_input(
             f"{city} - Ventoso",
             min_value=calma_value,
             max_value=500.0,

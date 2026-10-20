@@ -7,6 +7,11 @@ ponderado por observaciones reales. Conserva el histórico Meteostat existente.
 WeatherNext 3 incorpora adaptador y acceso personal con login HTTPS. Su validación
 real sigue pendiente de aprobación de Google y credenciales privadas.
 
+Interfaz adaptada a móvil y escritorio: portada meteorológica, iconos SVG propios,
+franja horaria desplazable, días con rangos de temperatura y navegación Tiempo,
+Aciertos, Histórico y Ajustes. El análisis avanzado se conserva en vistas dedicadas.
+[Referencias y decisiones de diseño](docs/design.md).
+
 **Coste incremental estricto: 0 EUR.** No activar billing, pruebas con cargo,
 APIs de pago ni recursos Oracle adicionales.
 

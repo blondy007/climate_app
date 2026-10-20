@@ -16,8 +16,9 @@ from climate_app.shared.state import UPLOAD_CACHE
 from climate_app.ui.dashboard import render_dashboard
 from climate_app.ui.notifications import handle_station_feedback
 from climate_app.ui.sidebar import render_sidebar
+from climate_app.ui.design import apply_design, brand
 
-st.set_page_config(page_title="ClimateApp · Clima y previsión", page_icon="🌤️", layout="wide")
+st.set_page_config(page_title="ClimateApp · Tu clima, con perspectiva", page_icon="☀️", layout="wide", initial_sidebar_state="collapsed")
 
 
 def render_history() -> None:
@@ -70,8 +71,7 @@ def render_history() -> None:
         df_base = load_csv(str(DEFAULT_FILE))
         source_label = DEFAULT_FILE.name
 
-    st.title("Clima Meteostat · Comparativa")
-    st.caption(f"Archivo activo: {source_label}")
+    st.markdown('<div class="page-intro"><h1>Tu clima, con memoria.</h1><p>Explora estaciones, compara ciudades y descubre cómo cambian las estaciones del año.</p></div>', unsafe_allow_html=True)
 
     handle_station_feedback()
 
@@ -100,15 +100,15 @@ def render_history() -> None:
     default_range_value = (range_start_default, today)
     initial_range = (min_date or range_start_default, max_date or today)
 
-    filters, thresholds_map = render_sidebar(
-        df_base,
-        master_df,
-        stored_thresholds,
-        default_range_value,
-        min_downloadable_date,
-        today,
-        initial_range,
-    )
+    with st.expander("Filtros, estaciones y archivos"):
+        panel = st.container()
+        filters, thresholds_map = render_sidebar(
+            df_base, master_df, stored_thresholds, default_range_value,
+            min_downloadable_date, today, initial_range, panel=panel,
+        )
+        panel.header("Carga de datos")
+        panel.file_uploader("Archivo CSV (Meteostat Hourly)", type=["csv"], key="upload_csv")
+        panel.caption(f"Archivo activo: {source_label}")
 
     df_classified = apply_wind_class(df_base, thresholds_map)
 
@@ -117,18 +117,29 @@ def render_history() -> None:
 
     render_dashboard(filtered, filters, date_range, filters.agg_option, source_label)
 
-    st.sidebar.header("Carga de datos")
-    st.sidebar.file_uploader("Archivo CSV (Meteostat Hourly)", type=["csv"], key="upload_csv")
-
-
 def main() -> None:
-    view = st.radio("Navegación", ["🌤️ Previsión", "🎯 Aciertos", "📊 Histórico"],
+    apply_design()
+    brand()
+    st.markdown('<span class="nav-anchor"></span>', unsafe_allow_html=True)
+    labels = {"🌤️ Previsión": "Tiempo", "🎯 Aciertos": "Aciertos", "📊 Histórico": "Histórico", "⚙️ Ajustes": "Ajustes"}
+    view = st.radio("Navegación", list(labels), format_func=labels.get,
                     horizontal=True, label_visibility="collapsed", key="main_view")
     if view == "📊 Histórico":
         render_history()
+    elif view == "⚙️ Ajustes":
+        from climate_app.ui.forecast_dashboard import render_settings
+        render_settings()
     else:
         from climate_app.ui.forecast_dashboard import render_forecast_dashboard
         render_forecast_dashboard(evaluation=view == "🎯 Aciertos")
+    st.markdown('<div class="app-footer"><span>climateapp. · Tu clima, con perspectiva.</span><span><a href="https://open-meteo.com/">Open-Meteo</a> · ECMWF · DWD · NOAA · <a href="https://www.met.no/en">MET Norway</a> · <a href="https://meteostat.net/">Meteostat</a> · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></span></div>', unsafe_allow_html=True)
+    from climate_app.forecast.access import private_view
+    if private_view():
+        st.caption("Google BigQuery · © 2024-6 Google LLC, whose machine learning models were used to create the experimental data made available under the following licence terms https://storage.googleapis.com/weathernext-public/terms-of-use.pdf. This data is intended for experimental modelling only and is not intended, validated, or approved for real world use.")
+    if st.session_state.get("last_main_view") != view:
+        st.session_state["last_main_view"] = view
+        from streamlit.components.v1 import html
+        html('<script>requestAnimationFrame(()=>{const main=window.parent.document.querySelector("section.main");if(main)main.scrollTo(0,0);});</script>', height=0)
 
 
 if __name__ == "__main__":

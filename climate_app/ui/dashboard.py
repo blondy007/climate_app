@@ -15,6 +15,7 @@ from climate_app.services.analytics import (
     kpis,
 )
 from climate_app.shared.models import FilterSelections
+from climate_app.ui.design import plot_chart
 
 
 def render_dashboard(
@@ -133,7 +134,7 @@ def render_dashboard(
             height=450,
         )
         fig.update_xaxes(categoryorder="array", categoryarray=category_array)
-        st.plotly_chart(fig, use_container_width=True, theme="streamlit")
+        plot_chart(fig, use_container_width=True, theme="streamlit")
 
         delta_df = aggregated.copy()
         delta_df["Delta (°C)"] = delta_df["Se siente (°C)"] - delta_df["Temp (°C)"]
@@ -165,7 +166,7 @@ def render_dashboard(
                 height=420,
             )
             fig_delta.update_xaxes(categoryorder="array", categoryarray=category_array)
-            st.plotly_chart(fig_delta, use_container_width=True, theme="streamlit")
+            plot_chart(fig_delta, use_container_width=True, theme="streamlit")
     else:
         st.info("Sin datos agregados para mostrar en el gráfico de temperatura.")
 
@@ -189,7 +190,7 @@ def render_dashboard(
                 height=420,
             )
             fig_humidity.update_xaxes(categoryorder="array", categoryarray=category_array)
-            st.plotly_chart(fig_humidity, use_container_width=True, theme="streamlit")
+            plot_chart(fig_humidity, use_container_width=True, theme="streamlit")
 
     if wind_available and "Viento (km/h)" in aggregated.columns and aggregated["Viento (km/h)"].notna().any():
         fig_wind = go.Figure()
@@ -211,7 +212,7 @@ def render_dashboard(
                 height=420,
             )
             fig_wind.update_xaxes(categoryorder="array", categoryarray=category_array)
-            st.plotly_chart(fig_wind, use_container_width=True, theme="streamlit")
+            plot_chart(fig_wind, use_container_width=True, theme="streamlit")
 
     if value_columns:
         missing_rows = aggregated[aggregated[value_columns].isna().all(axis=1)]
@@ -288,7 +289,7 @@ def render_dashboard(
                     legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
                     margin=dict(t=80, b=100, l=60, r=20),
                 )
-                st.plotly_chart(fig_dist, use_container_width=True, theme="streamlit")
+                plot_chart(fig_dist, use_container_width=True, theme="streamlit")
             else:
                 st.info("No hay suficientes datos para el gráfico de distribución.")
 
