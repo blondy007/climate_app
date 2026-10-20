@@ -8,6 +8,8 @@ import base64
 import pandas as pd
 import streamlit as st
 
+from climate_app.ui.appearance import PALETTES, palette, sync_appearance
+
 WEEKDAYS = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 MONTHS = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre")
 
@@ -77,7 +79,15 @@ def weather_svg(kind="partly", size=80):
 
 
 def apply_design():
+    mode = sync_appearance()
     css = Path(__file__).with_name("weather.css").read_text(encoding="utf-8")
+    variables = lambda colors: ";".join(f"--{name}:{color}" for name, color in colors.items())
+    css += f':root {{{variables(PALETTES["light"])};color-scheme:light;}}'
+    dark = f':root {{{variables(PALETTES["dark"])};--accent:#77d1dc;--soft:#243e4b;--hover:#244451;--nav:#192d38f2;--table-filter:invert(.9) hue-rotate(180deg);color-scheme:dark;}}'
+    if mode == "dark":
+        css += dark
+    elif mode == "auto":
+        css += f'@media(prefers-color-scheme:dark) {{{dark}}}'
     for index, name in enumerate(("sun", "chart", "clock", "settings"), start=1):
         encoded = base64.b64encode(icon(name).encode()).decode()
         css += f'.element-container:has(.nav-anchor)+.element-container [data-baseweb="radio"]:nth-child({index})::before {{ mask-image:url("data:image/svg+xml;base64,{encoded}"); }}'
@@ -86,15 +96,18 @@ def apply_design():
 
 def plot_chart(fig, **kwargs):
     """Give the historical charts the same typography and palette as forecasts."""
-    fig.update_layout(paper_bgcolor="white", plot_bgcolor="white",
-                      font=dict(family="Inter, Segoe UI, sans-serif", color="#193543", size=11),
+    colors = palette()
+    fig.update_layout(template="plotly_dark" if colors == PALETTES["dark"] else "plotly_white",
+                      paper_bgcolor=colors["surface"], plot_bgcolor=colors["surface"],
+                      font=dict(family="Inter, Segoe UI, sans-serif", color=colors["ink"], size=11),
                       colorway=["#197d8b", "#c99a48", "#647ba8", "#bc7d8d", "#5c9e8a"],
                       legend=dict(orientation="h", y=-.3, yanchor="top", x=0, xanchor="left",
                                   entrywidth=210, font=dict(size=10)),
                       margin=dict(t=60, b=150, l=45, r=20))
     fig.update_xaxes(showgrid=False, zeroline=False)
-    fig.update_yaxes(gridcolor="#edf2f4", zeroline=False)
+    fig.update_yaxes(gridcolor=colors["grid"], zeroline=False)
     kwargs["config"] = {"displayModeBar": False, "responsive": True}
+    kwargs["theme"] = None
     st.plotly_chart(fig, **kwargs)
 
 

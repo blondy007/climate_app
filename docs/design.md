@@ -10,7 +10,7 @@ Referencias visuales consultadas el 20 de octubre de 2026:
   con detalle disponible sin saturar la consulta principal.
 
 La implementación conserva Streamlit y los servicios existentes. Usa una paleta
-costera de azul petróleo, fondos claros y acentos cálidos, tipografía del sistema,
+costera de azul petróleo, fondos claros u oscuros y acentos cálidos, tipografía del sistema,
 tarjetas adaptables y SVG originales locales. No añade bibliotecas, cuotas,
 recursos remotos de diseño ni suscripciones.
 
@@ -21,7 +21,12 @@ recursos remotos de diseño ni suscripciones.
   mientras se acumulan observaciones, sin mostrar métricas ficticias.
 - Histórico: análisis original, con filtros, estaciones, umbrales y carga de CSV
   accesibles desde un panel plegable en la propia página, también en móvil.
-- Ajustes: cuenta personal, gestión de lugares, estado de fuentes y licencias.
+- Ajustes: apariencia, gestión de lugares, cuenta personal, fuentes y licencias.
+
+El selector Automático / Claro / Oscuro recuerda la elección por navegador.
+El modo automático sigue el dispositivo; tarjetas, formularios, navegación y
+gráficos comparten la paleta. La gestión muestra cada lugar con su botón Quitar,
+y un apartado de lugares quitados permite recuperarlo conservando su archivo.
 
 En móvil la navegación queda al alcance del pulgar en la parte inferior. Los
 controles conservan interacción de teclado y foco visible. Las horas se presentan

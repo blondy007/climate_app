@@ -10,6 +10,8 @@ real sigue pendiente de aprobación de Google y credenciales privadas.
 Interfaz adaptada a móvil y escritorio: portada meteorológica, iconos SVG propios,
 franja horaria desplazable, días con rangos de temperatura y navegación Tiempo,
 Aciertos, Histórico y Ajustes. El análisis avanzado se conserva en vistas dedicadas.
+En Ajustes puedes elegir tema claro, oscuro o automático (según el dispositivo),
+recordado por navegador, y quitar o recuperar lugares sin perder su historial.
 [Referencias y decisiones de diseño](docs/design.md).
 
 **Coste incremental estricto: 0 EUR.** No activar billing, pruebas con cargo,

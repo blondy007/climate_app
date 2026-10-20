@@ -12,6 +12,65 @@ from climate_app.forecast.store import Store
 
 
 class AppTests(unittest.TestCase):
+    def test_places_can_be_removed_and_restored_without_losing_archives(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "forecasts.sqlite3"
+            store = Store(path)
+            store.seed()
+            now = utcnow()
+            first, second = store.locations()
+            for location in (first, second):
+                store.save_forecast(location.id, Forecast("ecmwf", now, [dict(valid_time=now + timedelta(hours=2), temperature=21)]))
+            with patch.dict(os.environ, {"CLIMATE_FORECAST_DB": str(path)}):
+                app = AppTest.from_file(str(Path(__file__).parents[1] / "app.py")).run(timeout=30)
+                app.selectbox(key="forecast_location").set_value(second.id).run(timeout=30)
+                next(button for button in app.button if button.label == "Mis lugares").click().run(timeout=30)
+                self.assertEqual(app.radio(key="main_view").value, "⚙️ Ajustes")
+                app.button(key=f"remove_place_{first.id}").click().run(timeout=30)
+                self.assertEqual([loc.id for loc in store.locations()], [second.id])
+                self.assertEqual(len(store.forecasts(first.id)), 1)
+                self.assertEqual(app.session_state["selected_forecast_location"], second.id)
+                app.button(key=f"remove_place_{second.id}").click().run(timeout=30)
+                self.assertEqual(store.locations(), [])
+                self.assertEqual(len(store.locations(include_inactive=True)), 2)
+                app.radio(key="main_view").set_value("🌤️ Previsión").run(timeout=30)
+                self.assertEqual(len(app.exception), 0, str(app.exception))
+                self.assertTrue(any("Tu próximo lugar favorito" in element.value for element in app.markdown))
+                app.radio(key="main_view").set_value("⚙️ Ajustes").run(timeout=30)
+                app.button(key=f"restore_place_{second.id}").click().run(timeout=30)
+                app.radio(key="main_view").set_value("🌤️ Previsión").run(timeout=30)
+                self.assertEqual(len(app.exception), 0, str(app.exception))
+                self.assertEqual(app.selectbox(key="forecast_location").value, second.id)
+                self.assertTrue(any('21°' in element.value for element in app.markdown))
+
+    def test_dark_theme_survives_navigation_and_updates_charts(self):
+        import json
+        from climate_app.ui.appearance import PALETTES
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "forecasts.sqlite3"
+            store = Store(path)
+            store.seed()
+            now = utcnow()
+            store.save_forecast(store.locations()[0].id, Forecast("ecmwf", now, [dict(valid_time=now + timedelta(hours=2), temperature=21)]))
+            with patch.dict(os.environ, {"CLIMATE_FORECAST_DB": str(path)}):
+                app = AppTest.from_file(str(Path(__file__).parents[1] / "app.py")).run(timeout=30)
+                app.radio(key="main_view").set_value("⚙️ Ajustes").run(timeout=30)
+                app.radio(key="appearance_picker").set_value("dark").run(timeout=30)
+                app.radio(key="main_view").set_value("🌤️ Previsión").run(timeout=30)
+                self.assertEqual(app.session_state["appearance"], "dark")
+                figure = json.loads(app.get("plotly_chart")[0].proto.spec)
+                self.assertEqual(figure["layout"]["paper_bgcolor"], PALETTES["dark"]["surface"])
+                self.assertEqual(figure["layout"]["font"]["color"], PALETTES["dark"]["ink"])
+                app.radio(key="main_view").set_value("📊 Histórico").run(timeout=30)
+                self.assertEqual(len(app.exception), 0, str(app.exception))
+                app.radio(key="main_view").set_value("⚙️ Ajustes").run(timeout=30)
+                self.assertEqual(app.radio(key="appearance_picker").value, "dark")
+                app.radio(key="appearance_picker").set_value("light").run(timeout=30)
+                app.radio(key="main_view").set_value("🌤️ Previsión").run(timeout=30)
+                figure = json.loads(app.get("plotly_chart")[0].proto.spec)
+                self.assertEqual(figure["layout"]["paper_bgcolor"], PALETTES["light"]["surface"])
+                self.assertEqual(len(app.exception), 0, str(app.exception))
+
     def test_google_requires_owner_login_and_logout_hides_it_again(self):
         from climate_app.auth import password_hash
         with tempfile.TemporaryDirectory() as temp:

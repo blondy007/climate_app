@@ -24,6 +24,21 @@ La navegación inferior permanece accesible en móvil. La gestión de lugares y 
 estado de fuentes también están en Ajustes; los filtros y estaciones históricas
 se abren dentro de Histórico, sin depender de una barra lateral oculta.
 
+## Apariencia y lugares
+
+**Ajustes → Apariencia** ofrece Automático, Claro y Oscuro. La preferencia se
+guarda en el navegador, separada de la cuenta y de la base de datos compartida.
+Automático sigue el esquema de color del dispositivo, incluidos sus cambios.
+Si el navegador bloquea el almacenamiento local, la elección dura la sesión.
+
+**Mis lugares** en Tiempo abre Ajustes. En **Tus lugares**, cada ubicación tiene
+un botón **Quitar**: desactiva su recopilación sin borrar previsiones ni
+observaciones. **Lugares quitados → Recuperar** reactiva la misma ubicación con
+su archivo anterior, respetando el máximo de diez lugares activos. Se permite
+quitar todos los lugares; las ubicaciones iniciales no se vuelven a añadir solas.
+
+## Configuración privada del acceso
+
 Después de publicar HTTPS, ejecuta `python -m climate_app.auth verify-https` en el
 contenedor. Comprueba el certificado y el endpoint antes de habilitar el login.
 También se admite `CLIMATE_HTTPS_VERIFIED=1` en Coolify tras una verificación externa.

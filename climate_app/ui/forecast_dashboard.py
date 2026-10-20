@@ -16,6 +16,7 @@ from climate_app.forecast.providers import geocode
 from climate_app.forecast.store import Store
 from climate_app.auth import owner_login
 from climate_app.ui.design import section, hero_html, weather_details, hourly_strip, daily_cards, empty_state, text
+from climate_app.ui.appearance import PALETTES, appearance_controls, palette
 
 METRICS = {"temperature": ("Temperatura", "°C"), "humidity": ("Humedad", "%"),
            "precipitation": ("Precipitación", "mm"), "wind_speed": ("Viento", "km/h"),
@@ -44,20 +45,41 @@ def local_times(series, timezone):
 
 
 def configure_figure(fig, title, unit, height=330):
-    fig.update_layout(title=dict(text=title, font=dict(size=15)), height=height,
+    colors = palette()
+    fig.update_layout(template="plotly_dark" if colors == PALETTES["dark"] else "plotly_white",
+                      title=dict(text=title, font=dict(size=15)), height=height,
                       margin=dict(t=55, b=85, l=45, r=20),
-                      paper_bgcolor="white", plot_bgcolor="white",
-                      font=dict(family="Inter, Segoe UI, sans-serif", color="#193543", size=11),
+                      paper_bgcolor=colors["surface"], plot_bgcolor=colors["surface"],
+                      font=dict(family="Inter, Segoe UI, sans-serif", color=colors["ink"], size=11),
                       hovermode="x unified", legend=dict(orientation="h", y=-0.25,
                                                         yanchor="top", x=0, font=dict(size=11)),
                       yaxis_title=unit, xaxis_title=None)
     fig.update_xaxes(showgrid=False, zeroline=False)
-    fig.update_yaxes(gridcolor="#edf2f4", zeroline=False)
+    fig.update_yaxes(gridcolor=colors["grid"], zeroline=False)
     return fig
 
 
 def location_controls(store):
-    with st.expander("Añadir o gestionar lugares"):
+    notice = st.session_state.pop("place_notice", None)
+    if notice:
+        st.success(notice)
+    locations = store.locations()
+    st.caption(f"{len(locations)} de 10 lugares activos. Al quitar un lugar se detiene su recopilación; su historial se conserva y puedes recuperarlo abajo.")
+    if not locations:
+        st.info("Todavía no tienes lugares activos. Añade uno o recupera un lugar quitado.")
+    for location in locations:
+        with st.container(border=True):
+            info, action = st.columns([3, 1])
+            info.markdown(f'<div class="place-label"><strong>{text(location.name)}</strong><span>{location.latitude:.4f}, {location.longitude:.4f} · {text(location.timezone)}</span></div>', unsafe_allow_html=True)
+            if action.button("Quitar", key=f"remove_place_{location.id}", use_container_width=True,
+                             help=f"Quitar {location.name} de tus lugares sin borrar su historial"):
+                store.deactivate(location.id)
+                if st.session_state.get("selected_forecast_location") == location.id:
+                    st.session_state.pop("selected_forecast_location", None)
+                    st.session_state.pop("forecast_location", None)
+                st.session_state["place_notice"] = f"{location.name} se ha quitado. Puedes recuperarlo en «Lugares quitados»."
+                st.rerun()
+    with st.expander("Añadir lugar"):
         st.caption("Hasta 10 lugares activos. Las ubicaciones y sus previsiones se guardan entre visitas.")
         with st.form("search_forecast_place"):
             query = st.text_input("Buscar ciudad o localidad", max_chars=120)
@@ -99,14 +121,25 @@ def location_controls(store):
                     st.rerun()
                 except (ValueError, KeyError):
                     st.warning("Revisa el nombre, la zona horaria y el límite de lugares activos.")
-        locations = store.locations()
-        if locations:
-            inactive = st.selectbox("Dejar de recopilar un lugar", [loc.id for loc in locations],
-                                    format_func=lambda value: next(loc.name for loc in locations if loc.id == value))
-            if st.button("Desactivar lugar", help="Conserva todas sus previsiones y observaciones archivadas"):
-                store.deactivate(inactive)
-                st.session_state.pop("forecast_location", None)
-                st.rerun()
+    active_ids = {loc.id for loc in locations}
+    inactive = [loc for loc in store.locations(include_inactive=True) if loc.id not in active_ids]
+    if inactive:
+        with st.expander(f"Lugares quitados ({len(inactive)})"):
+            st.caption("Recuperar un lugar reactiva su recopilación y permite consultar el historial que ya tenía.")
+            for location in inactive:
+                with st.container(border=True):
+                    info, action = st.columns([3, 1])
+                    info.markdown(f"**{location.name}**")
+                    if action.button("Recuperar", key=f"restore_place_{location.id}", use_container_width=True,
+                                     disabled=len(locations) >= 10, help=f"Volver a añadir {location.name}"):
+                        try:
+                            store.add_location(location.name, location.latitude, location.longitude, location.timezone)
+                            st.session_state["place_notice"] = f"{location.name} vuelve a estar en tus lugares. Su historial sigue disponible."
+                            st.rerun()
+                        except ValueError as exc:
+                            st.warning(str(exc))
+            if len(locations) >= 10:
+                st.caption("Quita un lugar activo antes de recuperar otro: el máximo es 10.")
 
 
 def provider_status(store, location):
@@ -161,7 +194,7 @@ def forecast_view(store, location, frame):
     section("Mira un poco más allá", "Explora la evolución, contrasta modelos y pon el tiempo en contexto.", "chart")
     evolution, comparison, climate = st.tabs(["Evolución", "Comparar modelos", "Climatología"])
     with evolution:
-        st.plotly_chart(temperature_figure(main, main, provider, location), use_container_width=True, config=CHART_CONFIG)
+        st.plotly_chart(temperature_figure(main, main, provider, location), use_container_width=True, config=CHART_CONFIG, theme=None)
         left, right = st.columns(2)
         x = local_times(main.valid_time, location.timezone)
         rain = make_subplots(specs=[[{"secondary_y": True}]])
@@ -169,18 +202,18 @@ def forecast_view(store, location, frame):
         if main.precip_probability.notna().any():
             rain.add_trace(go.Scatter(x=x, y=main.precip_probability, name="Probabilidad · %", line=dict(color="#c99a48", width=2)), secondary_y=True)
             rain.update_yaxes(range=[0, 100], title="%", secondary_y=True)
-        left.plotly_chart(configure_figure(rain, "Lluvia por hora", "mm"), use_container_width=True, config=CHART_CONFIG)
+        left.plotly_chart(configure_figure(rain, "Lluvia por hora", "mm"), use_container_width=True, config=CHART_CONFIG, theme=None)
         wind = go.Figure()
         wind.add_trace(go.Scatter(x=x, y=main.wind_speed, name="Viento", line=dict(color="#328783", width=2.5),
                                  fill="tozeroy", fillcolor="rgba(50,135,131,.07)",
                                  customdata=main.wind_direction.map(direction), hovertemplate="%{y:.1f} km/h · %{customdata}<extra></extra>"))
         if main.wind_gust.notna().any():
             wind.add_trace(go.Scatter(x=x, y=main.wind_gust, name="Rachas", line=dict(dash="dot", color="#c99a48", width=2)))
-        right.plotly_chart(configure_figure(wind, "Viento y rachas", "km/h"), use_container_width=True, config=CHART_CONFIG)
+        right.plotly_chart(configure_figure(wind, "Viento y rachas", "km/h"), use_container_width=True, config=CHART_CONFIG, theme=None)
         st.caption("Lluvia acumulada durante cada hora. Las probabilidades e intervalos solo aparecen si la fuente los proporciona.")
     with comparison:
         compare = st.checkbox("Comparar modelos", value=True)
-        st.plotly_chart(temperature_figure(main, frame if compare else main, provider, location), use_container_width=True, config=CHART_CONFIG)
+        st.plotly_chart(temperature_figure(main, frame if compare else main, provider, location), use_container_width=True, config=CHART_CONFIG, theme=None)
         if provider in ("climateapp", "climateapp_private"):
             metadata = json.loads(first.metadata)
             st.markdown('<div class="insight-card"><h3>' + ("Un consenso que aprende de sus aciertos" if metadata.get("trained") else "El consenso está empezando a aprender") + '</h3><p>' + ("La combinación se pondera según los errores observados anteriormente en este lugar y plazo." if metadata.get("trained") else "Por ahora, los modelos tienen el mismo peso. Los pesos se ajustan cuando cada fuente acumula al menos 30 observaciones en tres días por variable y plazo.") + '</p></div>', unsafe_allow_html=True)
@@ -271,7 +304,7 @@ def evaluation_view(store, location):
         fig.add_trace(go.Bar(x=group.horizon, y=group.mae, name=CHART_LABELS[provider], marker_color=COLORS[provider],
                              customdata=group.n, hovertemplate="MAE %{y:.2f}<br>%{customdata} muestras<extra>%{fullData.name}</extra>"))
     fig.update_xaxes(categoryorder="array", categoryarray=[label for _, label in HORIZONS])
-    st.plotly_chart(configure_figure(fig, "Error absoluto medio", unit, 400), use_container_width=True, config=CHART_CONFIG)
+    st.plotly_chart(configure_figure(fig, "Error absoluto medio", unit, 400), use_container_width=True, config=CHART_CONFIG, theme=None)
     display = selected[["model", "horizon", "mae", "rmse", "bias", "n", "days", "brier", "interval_coverage"]].rename(columns={
         "model": "Modelo", "horizon": "Antelación", "mae": f"MAE {unit}", "rmse": f"RMSE {unit}",
         "bias": f"Sesgo {unit}", "n": "Muestras", "days": "Días", "brier": "Brier lluvia ≥0,1 mm",
@@ -294,7 +327,11 @@ def render_forecast_dashboard(evaluation=False):
     if st.session_state.get("forecast_location") not in lookup:
         preferred = st.session_state.get("selected_forecast_location")
         st.session_state["forecast_location"] = preferred if preferred in lookup else locations[0].id
-    location_id = st.selectbox("Lugar", list(lookup), format_func=lambda key: lookup[key].name, key="forecast_location", label_visibility="collapsed")
+    picker, manage = st.columns([4, 1])
+    location_id = picker.selectbox("Lugar", list(lookup), format_func=lambda key: lookup[key].name, key="forecast_location", label_visibility="collapsed")
+    def open_settings():
+        st.session_state["main_view"] = "⚙️ Ajustes"
+    manage.button("Mis lugares", on_click=open_settings, use_container_width=True, help="Añadir, quitar o recuperar lugares en Ajustes")
     location = lookup[location_id]
     st.session_state["selected_forecast_location"] = location_id
     if evaluation:
@@ -313,10 +350,12 @@ def render_settings():
     store = Store()
     store.seed()
     st.markdown('<div class="page-intro"><h1>A tu manera.</h1><p>Tus lugares, tu acceso personal y las fuentes que hacen posible tu previsión.</p></div>', unsafe_allow_html=True)
+    section("Apariencia", "Un aspecto cómodo a cualquier hora.", "sun")
+    appearance_controls()
+    section("Tus lugares", "Añade, quita o recupera tus sitios favoritos.", "pin")
+    location_controls(store)
     section("Tu cuenta", "Acceso personal a WeatherNext y al consenso completo.", "layers")
     owner_login(store)
-    section("Tus lugares", "Añade una ciudad o un rincón que te importe.", "pin")
-    location_controls(store)
     locations = store.locations()
     if locations:
         lookup = {loc.id: loc for loc in locations}
