@@ -1,0 +1,625 @@
+{
+  "generated_at": "2026-10-20T20:01:33.666708+00:00",
+  "algorithm": "opera-lk-rate-v1",
+  "approved_for_public_use": false,
+  "availability_rule": "archive_last_modified_plus_2_minutes",
+  "reference": "later OPERA rain-rate estimate; not an independent rain gauge",
+  "source_files": 1160,
+  "elapsed_seconds": 79.54,
+  "failed_issue_sites": {
+    "Insufficient radar coverage": 169,
+    "Unreliable motion estimate": 89
+  },
+  "results": [
+    {
+      "site": "los-alcazares",
+      "split": "development",
+      "lead_minutes": 15,
+      "cases": 192,
+      "attempted_origins": 192,
+      "forecast_origins": 84,
+      "availability": 0.4375,
+      "paired_cases": 84,
+      "nowcast": {
+        "hits": 20,
+        "misses": 0,
+        "false_alarms": 3,
+        "correct_dry": 61,
+        "unavailable": 0,
+        "csi": 0.8695652173913043,
+        "probability_of_detection": 1.0,
+        "false_alarm_ratio": 0.13043478260869565
+      },
+      "persistence": {
+        "hits": 17,
+        "misses": 3,
+        "false_alarms": 5,
+        "correct_dry": 59,
+        "unavailable": 0,
+        "csi": 0.68,
+        "probability_of_detection": 0.85,
+        "false_alarm_ratio": 0.22727272727272727
+      },
+      "nowcast_all": {
+        "hits": 20,
+        "misses": 0,
+        "false_alarms": 3,
+        "correct_dry": 61,
+        "unavailable": 108,
+        "csi": 0.8695652173913043,
+        "probability_of_detection": 1.0,
+        "false_alarm_ratio": 0.13043478260869565
+      },
+      "persistence_all": {
+        "hits": 32,
+        "misses": 10,
+        "false_alarms": 10,
+        "correct_dry": 136,
+        "unavailable": 4,
+        "csi": 0.6153846153846154,
+        "probability_of_detection": 0.7619047619047619,
+        "false_alarm_ratio": 0.23809523809523808
+      }
+    },
+    {
+      "site": "los-alcazares",
+      "split": "development",
+      "lead_minutes": 30,
+      "cases": 192,
+      "attempted_origins": 192,
+      "forecast_origins": 84,
+      "availability": 0.4375,
+      "paired_cases": 83,
+      "nowcast": {
+        "hits": 18,
+        "misses": 3,
+        "false_alarms": 4,
+        "correct_dry": 58,
+        "unavailable": 0,
+        "csi": 0.72,
+        "probability_of_detection": 0.8571428571428571,
+        "false_alarm_ratio": 0.18181818181818182
+      },
+      "persistence": {
+        "hits": 15,
+        "misses": 6,
+        "false_alarms": 7,
+        "correct_dry": 55,
+        "unavailable": 0,
+        "csi": 0.5357142857142857,
+        "probability_of_detection": 0.7142857142857143,
+        "false_alarm_ratio": 0.3181818181818182
+      },
+      "nowcast_all": {
+        "hits": 18,
+        "misses": 3,
+        "false_alarms": 4,
+        "correct_dry": 58,
+        "unavailable": 109,
+        "csi": 0.72,
+        "probability_of_detection": 0.8571428571428571,
+        "false_alarm_ratio": 0.18181818181818182
+      },
+      "persistence_all": {
+        "hits": 28,
+        "misses": 14,
+        "false_alarms": 14,
+        "correct_dry": 132,
+        "unavailable": 4,
+        "csi": 0.5,
+        "probability_of_detection": 0.6666666666666666,
+        "false_alarm_ratio": 0.3333333333333333
+      }
+    },
+    {
+      "site": "los-alcazares",
+      "split": "development",
+      "lead_minutes": 60,
+      "cases": 192,
+      "attempted_origins": 192,
+      "forecast_origins": 84,
+      "availability": 0.4375,
+      "paired_cases": 83,
+      "nowcast": {
+        "hits": 17,
+        "misses": 4,
+        "false_alarms": 7,
+        "correct_dry": 55,
+        "unavailable": 0,
+        "csi": 0.6071428571428571,
+        "probability_of_detection": 0.8095238095238095,
+        "false_alarm_ratio": 0.2916666666666667
+      },
+      "persistence": {
+        "hits": 12,
+        "misses": 9,
+        "false_alarms": 10,
+        "correct_dry": 52,
+        "unavailable": 0,
+        "csi": 0.3870967741935484,
+        "probability_of_detection": 0.5714285714285714,
+        "false_alarm_ratio": 0.45454545454545453
+      },
+      "nowcast_all": {
+        "hits": 17,
+        "misses": 4,
+        "false_alarms": 7,
+        "correct_dry": 55,
+        "unavailable": 109,
+        "csi": 0.6071428571428571,
+        "probability_of_detection": 0.8095238095238095,
+        "false_alarm_ratio": 0.2916666666666667
+      },
+      "persistence_all": {
+        "hits": 23,
+        "misses": 20,
+        "false_alarms": 19,
+        "correct_dry": 126,
+        "unavailable": 4,
+        "csi": 0.3709677419354839,
+        "probability_of_detection": 0.5348837209302325,
+        "false_alarm_ratio": 0.4523809523809524
+      }
+    },
+    {
+      "site": "los-alcazares",
+      "split": "validation",
+      "lead_minutes": 15,
+      "cases": 92,
+      "attempted_origins": 92,
+      "forecast_origins": 32,
+      "availability": 0.34782608695652173,
+      "paired_cases": 32,
+      "nowcast": {
+        "hits": 10,
+        "misses": 4,
+        "false_alarms": 0,
+        "correct_dry": 18,
+        "unavailable": 0,
+        "csi": 0.7142857142857143,
+        "probability_of_detection": 0.7142857142857143,
+        "false_alarm_ratio": 0.0
+      },
+      "persistence": {
+        "hits": 10,
+        "misses": 4,
+        "false_alarms": 3,
+        "correct_dry": 15,
+        "unavailable": 0,
+        "csi": 0.5882352941176471,
+        "probability_of_detection": 0.7142857142857143,
+        "false_alarm_ratio": 0.23076923076923078
+      },
+      "nowcast_all": {
+        "hits": 10,
+        "misses": 4,
+        "false_alarms": 0,
+        "correct_dry": 18,
+        "unavailable": 60,
+        "csi": 0.7142857142857143,
+        "probability_of_detection": 0.7142857142857143,
+        "false_alarm_ratio": 0.0
+      },
+      "persistence_all": {
+        "hits": 24,
+        "misses": 6,
+        "false_alarms": 5,
+        "correct_dry": 57,
+        "unavailable": 0,
+        "csi": 0.6857142857142857,
+        "probability_of_detection": 0.8,
+        "false_alarm_ratio": 0.1724137931034483
+      }
+    },
+    {
+      "site": "los-alcazares",
+      "split": "validation",
+      "lead_minutes": 30,
+      "cases": 92,
+      "attempted_origins": 92,
+      "forecast_origins": 32,
+      "availability": 0.34782608695652173,
+      "paired_cases": 32,
+      "nowcast": {
+        "hits": 9,
+        "misses": 4,
+        "false_alarms": 2,
+        "correct_dry": 17,
+        "unavailable": 0,
+        "csi": 0.6,
+        "probability_of_detection": 0.6923076923076923,
+        "false_alarm_ratio": 0.18181818181818182
+      },
+      "persistence": {
+        "hits": 9,
+        "misses": 4,
+        "false_alarms": 4,
+        "correct_dry": 15,
+        "unavailable": 0,
+        "csi": 0.5294117647058824,
+        "probability_of_detection": 0.6923076923076923,
+        "false_alarm_ratio": 0.3076923076923077
+      },
+      "nowcast_all": {
+        "hits": 9,
+        "misses": 4,
+        "false_alarms": 2,
+        "correct_dry": 17,
+        "unavailable": 60,
+        "csi": 0.6,
+        "probability_of_detection": 0.6923076923076923,
+        "false_alarm_ratio": 0.18181818181818182
+      },
+      "persistence_all": {
+        "hits": 23,
+        "misses": 8,
+        "false_alarms": 6,
+        "correct_dry": 55,
+        "unavailable": 0,
+        "csi": 0.6216216216216216,
+        "probability_of_detection": 0.7419354838709677,
+        "false_alarm_ratio": 0.20689655172413793
+      }
+    },
+    {
+      "site": "los-alcazares",
+      "split": "validation",
+      "lead_minutes": 60,
+      "cases": 92,
+      "attempted_origins": 92,
+      "forecast_origins": 32,
+      "availability": 0.34782608695652173,
+      "paired_cases": 32,
+      "nowcast": {
+        "hits": 8,
+        "misses": 4,
+        "false_alarms": 1,
+        "correct_dry": 19,
+        "unavailable": 0,
+        "csi": 0.6153846153846154,
+        "probability_of_detection": 0.6666666666666666,
+        "false_alarm_ratio": 0.1111111111111111
+      },
+      "persistence": {
+        "hits": 7,
+        "misses": 5,
+        "false_alarms": 6,
+        "correct_dry": 14,
+        "unavailable": 0,
+        "csi": 0.3888888888888889,
+        "probability_of_detection": 0.5833333333333334,
+        "false_alarm_ratio": 0.46153846153846156
+      },
+      "nowcast_all": {
+        "hits": 8,
+        "misses": 4,
+        "false_alarms": 1,
+        "correct_dry": 19,
+        "unavailable": 60,
+        "csi": 0.6153846153846154,
+        "probability_of_detection": 0.6666666666666666,
+        "false_alarm_ratio": 0.1111111111111111
+      },
+      "persistence_all": {
+        "hits": 21,
+        "misses": 10,
+        "false_alarms": 8,
+        "correct_dry": 53,
+        "unavailable": 0,
+        "csi": 0.5384615384615384,
+        "probability_of_detection": 0.6774193548387096,
+        "false_alarm_ratio": 0.27586206896551724
+      }
+    },
+    {
+      "site": "torrejon",
+      "split": "development",
+      "lead_minutes": 15,
+      "cases": 192,
+      "attempted_origins": 192,
+      "forecast_origins": 123,
+      "availability": 0.640625,
+      "paired_cases": 123,
+      "nowcast": {
+        "hits": 2,
+        "misses": 2,
+        "false_alarms": 1,
+        "correct_dry": 118,
+        "unavailable": 0,
+        "csi": 0.4,
+        "probability_of_detection": 0.5,
+        "false_alarm_ratio": 0.3333333333333333
+      },
+      "persistence": {
+        "hits": 2,
+        "misses": 2,
+        "false_alarms": 3,
+        "correct_dry": 116,
+        "unavailable": 0,
+        "csi": 0.2857142857142857,
+        "probability_of_detection": 0.5,
+        "false_alarm_ratio": 0.6
+      },
+      "nowcast_all": {
+        "hits": 2,
+        "misses": 2,
+        "false_alarms": 1,
+        "correct_dry": 118,
+        "unavailable": 69,
+        "csi": 0.4,
+        "probability_of_detection": 0.5,
+        "false_alarm_ratio": 0.3333333333333333
+      },
+      "persistence_all": {
+        "hits": 9,
+        "misses": 8,
+        "false_alarms": 8,
+        "correct_dry": 167,
+        "unavailable": 0,
+        "csi": 0.36,
+        "probability_of_detection": 0.5294117647058824,
+        "false_alarm_ratio": 0.47058823529411764
+      }
+    },
+    {
+      "site": "torrejon",
+      "split": "development",
+      "lead_minutes": 30,
+      "cases": 192,
+      "attempted_origins": 192,
+      "forecast_origins": 123,
+      "availability": 0.640625,
+      "paired_cases": 123,
+      "nowcast": {
+        "hits": 1,
+        "misses": 2,
+        "false_alarms": 2,
+        "correct_dry": 118,
+        "unavailable": 0,
+        "csi": 0.2,
+        "probability_of_detection": 0.3333333333333333,
+        "false_alarm_ratio": 0.6666666666666666
+      },
+      "persistence": {
+        "hits": 1,
+        "misses": 2,
+        "false_alarms": 4,
+        "correct_dry": 116,
+        "unavailable": 0,
+        "csi": 0.14285714285714285,
+        "probability_of_detection": 0.3333333333333333,
+        "false_alarm_ratio": 0.8
+      },
+      "nowcast_all": {
+        "hits": 1,
+        "misses": 2,
+        "false_alarms": 2,
+        "correct_dry": 118,
+        "unavailable": 69,
+        "csi": 0.2,
+        "probability_of_detection": 0.3333333333333333,
+        "false_alarm_ratio": 0.6666666666666666
+      },
+      "persistence_all": {
+        "hits": 7,
+        "misses": 10,
+        "false_alarms": 10,
+        "correct_dry": 165,
+        "unavailable": 0,
+        "csi": 0.25925925925925924,
+        "probability_of_detection": 0.4117647058823529,
+        "false_alarm_ratio": 0.5882352941176471
+      }
+    },
+    {
+      "site": "torrejon",
+      "split": "development",
+      "lead_minutes": 60,
+      "cases": 192,
+      "attempted_origins": 192,
+      "forecast_origins": 123,
+      "availability": 0.640625,
+      "paired_cases": 123,
+      "nowcast": {
+        "hits": 2,
+        "misses": 4,
+        "false_alarms": 1,
+        "correct_dry": 116,
+        "unavailable": 0,
+        "csi": 0.2857142857142857,
+        "probability_of_detection": 0.3333333333333333,
+        "false_alarm_ratio": 0.3333333333333333
+      },
+      "persistence": {
+        "hits": 1,
+        "misses": 5,
+        "false_alarms": 4,
+        "correct_dry": 113,
+        "unavailable": 0,
+        "csi": 0.1,
+        "probability_of_detection": 0.16666666666666666,
+        "false_alarm_ratio": 0.8
+      },
+      "nowcast_all": {
+        "hits": 2,
+        "misses": 4,
+        "false_alarms": 1,
+        "correct_dry": 116,
+        "unavailable": 69,
+        "csi": 0.2857142857142857,
+        "probability_of_detection": 0.3333333333333333,
+        "false_alarm_ratio": 0.3333333333333333
+      },
+      "persistence_all": {
+        "hits": 4,
+        "misses": 13,
+        "false_alarms": 13,
+        "correct_dry": 162,
+        "unavailable": 0,
+        "csi": 0.13333333333333333,
+        "probability_of_detection": 0.23529411764705882,
+        "false_alarm_ratio": 0.7647058823529411
+      }
+    },
+    {
+      "site": "torrejon",
+      "split": "validation",
+      "lead_minutes": 15,
+      "cases": 92,
+      "attempted_origins": 92,
+      "forecast_origins": 71,
+      "availability": 0.7717391304347826,
+      "paired_cases": 71,
+      "nowcast": {
+        "hits": 2,
+        "misses": 7,
+        "false_alarms": 1,
+        "correct_dry": 61,
+        "unavailable": 0,
+        "csi": 0.2,
+        "probability_of_detection": 0.2222222222222222,
+        "false_alarm_ratio": 0.3333333333333333
+      },
+      "persistence": {
+        "hits": 5,
+        "misses": 4,
+        "false_alarms": 4,
+        "correct_dry": 58,
+        "unavailable": 0,
+        "csi": 0.38461538461538464,
+        "probability_of_detection": 0.5555555555555556,
+        "false_alarm_ratio": 0.4444444444444444
+      },
+      "nowcast_all": {
+        "hits": 2,
+        "misses": 7,
+        "false_alarms": 1,
+        "correct_dry": 61,
+        "unavailable": 21,
+        "csi": 0.2,
+        "probability_of_detection": 0.2222222222222222,
+        "false_alarm_ratio": 0.3333333333333333
+      },
+      "persistence_all": {
+        "hits": 5,
+        "misses": 4,
+        "false_alarms": 4,
+        "correct_dry": 79,
+        "unavailable": 0,
+        "csi": 0.38461538461538464,
+        "probability_of_detection": 0.5555555555555556,
+        "false_alarm_ratio": 0.4444444444444444
+      }
+    },
+    {
+      "site": "torrejon",
+      "split": "validation",
+      "lead_minutes": 30,
+      "cases": 92,
+      "attempted_origins": 92,
+      "forecast_origins": 71,
+      "availability": 0.7717391304347826,
+      "paired_cases": 71,
+      "nowcast": {
+        "hits": 0,
+        "misses": 9,
+        "false_alarms": 0,
+        "correct_dry": 62,
+        "unavailable": 0,
+        "csi": 0.0,
+        "probability_of_detection": 0.0,
+        "false_alarm_ratio": null
+      },
+      "persistence": {
+        "hits": 4,
+        "misses": 5,
+        "false_alarms": 5,
+        "correct_dry": 57,
+        "unavailable": 0,
+        "csi": 0.2857142857142857,
+        "probability_of_detection": 0.4444444444444444,
+        "false_alarm_ratio": 0.5555555555555556
+      },
+      "nowcast_all": {
+        "hits": 0,
+        "misses": 9,
+        "false_alarms": 0,
+        "correct_dry": 62,
+        "unavailable": 21,
+        "csi": 0.0,
+        "probability_of_detection": 0.0,
+        "false_alarm_ratio": null
+      },
+      "persistence_all": {
+        "hits": 4,
+        "misses": 5,
+        "false_alarms": 5,
+        "correct_dry": 78,
+        "unavailable": 0,
+        "csi": 0.2857142857142857,
+        "probability_of_detection": 0.4444444444444444,
+        "false_alarm_ratio": 0.5555555555555556
+      }
+    },
+    {
+      "site": "torrejon",
+      "split": "validation",
+      "lead_minutes": 60,
+      "cases": 92,
+      "attempted_origins": 92,
+      "forecast_origins": 71,
+      "availability": 0.7717391304347826,
+      "paired_cases": 70,
+      "nowcast": {
+        "hits": 0,
+        "misses": 9,
+        "false_alarms": 0,
+        "correct_dry": 61,
+        "unavailable": 0,
+        "csi": 0.0,
+        "probability_of_detection": 0.0,
+        "false_alarm_ratio": null
+      },
+      "persistence": {
+        "hits": 3,
+        "misses": 6,
+        "false_alarms": 6,
+        "correct_dry": 55,
+        "unavailable": 0,
+        "csi": 0.2,
+        "probability_of_detection": 0.3333333333333333,
+        "false_alarm_ratio": 0.6666666666666666
+      },
+      "nowcast_all": {
+        "hits": 0,
+        "misses": 9,
+        "false_alarms": 0,
+        "correct_dry": 61,
+        "unavailable": 22,
+        "csi": 0.0,
+        "probability_of_detection": 0.0,
+        "false_alarm_ratio": null
+      },
+      "persistence_all": {
+        "hits": 3,
+        "misses": 6,
+        "false_alarms": 6,
+        "correct_dry": 77,
+        "unavailable": 0,
+        "csi": 0.2,
+        "probability_of_detection": 0.3333333333333333,
+        "false_alarm_ratio": 0.6666666666666666
+      }
+    }
+  ],
+  "limitations": [
+    "Only three days; events and overlapping horizons are not independent samples",
+    "Radar verification is not independent ground truth",
+    "Onset/end timing below 15 minutes remains unvalidated",
+    "Retrospective publication metadata is a conservative proxy, not a prospective forecast record"
+  ],
+  "start": "2026-10-17T00:00:00+00:00",
+  "end": "2026-10-19T23:00:00+00:00",
+  "validation_start": "2026-10-19T00:00:00+00:00",
+  "model_sha256": "5e8e4205924afd7c9514b9de5d851cd63ed53e90ec87b9046867ac68eacd952e"
+}

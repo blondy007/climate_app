@@ -1,0 +1,19 @@
+name: Validate radar research
+on:
+  push:
+    branches: [main, 'codex/**']
+    paths: ['research/**', '.github/workflows/validate-radar-research.yml']
+  pull_request:
+    paths: ['research/**', '.github/workflows/validate-radar-research.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f research/nowcast/Dockerfile -t climate-radar-lab:test .
+      - run: docker run --rm --network none --cpus 1 --memory 768m --pids-limit 128 --read-only --tmpfs /tmp:rw,size=64m --security-opt no-new-privileges --cap-drop ALL climate-radar-lab:test python -m unittest discover -s research/nowcast/tests -v
+      - run: git diff --check
