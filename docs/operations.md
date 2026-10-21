@@ -36,13 +36,14 @@ Automático sigue el esquema de color del dispositivo, incluidos sus cambios.
 Si el navegador bloquea el almacenamiento local, la elección dura la sesión.
 
 El botón **Mis lugares**, junto al selector de Tiempo, abre directamente Tus lugares
-en Ajustes. **Cambiar alias** permite identificar cada ubicación (máximo 60 caracteres);
+en Ajustes. El icono de lápiz permite identificar cada ubicación (máximo 60 caracteres);
+abre un campo en línea con una marca para guardar y un aspa para cancelar.
 dejarlo vacío recupera su nombre original. Los alias están en una tabla aditiva
 `location_aliases`, dentro del mismo SQLite y de sus snapshots, sin cambiar IDs,
 coordenadas ni la tabla original de lugares; el esquema sigue admitiendo rollback.
 
 En **Tus lugares**, cada ubicación tiene
-un botón **Quitar**: desactiva su recopilación sin borrar previsiones ni
+un aspa que pide confirmar **Sí, quitar**: desactiva su recopilación sin borrar previsiones ni
 observaciones. **Lugares quitados → Recuperar** reactiva la misma ubicación con
 su archivo anterior, respetando el máximo de diez lugares activos. Se permite
 quitar todos los lugares; las ubicaciones iniciales no se vuelven a añadir solas.

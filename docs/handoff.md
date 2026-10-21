@@ -2,15 +2,21 @@
 
 ## Estado útil
 
-- Cambio local pendiente de despliegue: `codex/compact-place-controls`. Tus lugares
+- Producción actual: `11cf633a1a3c8bf9f38c232ca1da32e3789874a5`, publicada por petición
+  de Iván desde `codex/compact-place-controls`. Actions 39653861713: 84 Python + 16 Node
+  correctas y disparador API correcto. Imagen exacta running/healthy, HTTPS/health 200,
+  logs de arranque limpios, Kuma 5 Up, volumen y binding local conservados. Tus lugares
   usa lápiz y aspa por fila, alias en línea con guardar/cancelar y confirmación antes
   de quitar. Lugares quitados usa recuperar/aspa; borrado definitivo mantiene sesión
   personal y confirmación. 9 pruebas enfocadas correctas (alias, cancelación, duplicados,
   selección, recuperación y autorización). Capturas locales con datos ficticios en
   `test-results/compact-place-controls-mobile.png` y `compact-place-confirmation-mobile.png`.
-  No se ha publicado ni desplegado esta interfaz.
-- Producción verificada: `083c25c6dba25827baccdf5a6a10a0f437bc4ad0`.
-  Rama de trabajo `codex/manual-weather-refresh`. Despliegue y registro documental
+  Editor comprobado en producción a 390 px sin guardar cambios ni quitar lugares.
+  Evidencia: `test-results/compact-place-controls-production.png`. Registro canónico
+  publicado como `8ea732d` en master de oracle-vps-infra (apps/climate-app.md e
+  inventory/applications.yaml). Sin tareas pendientes de este despliegue.
+- Versión anterior / rollback: `083c25c6dba25827baccdf5a6a10a0f437bc4ad0`.
+  Rama anterior `codex/manual-weather-refresh`. Despliegue y registro documental
   aprobados expresamente por Iván. Actions 39647808142: 83 Python + 16 Node correctas
   y disparador API correcto. Despliegue completamente automático, sin fallback.
 - Actualizar previsión es un icono circular dentro del widget de lugares guardados.
