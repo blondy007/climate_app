@@ -171,15 +171,14 @@ input::placeholder,textarea::placeholder { color:var(--muted); opacity:1; }
 .place-label { padding:4px 0; }.place-label strong { display:block; font-size:15px; font-weight:600; color:var(--ink); }.place-label span { display:block; margin-top:5px; color:var(--muted); font-size:11px; overflow-wrap:anywhere; }
 /* Settings own their layout; avoid styling every ancestor of a place label. */
 .element-container:has(.settings-layout-anchor),.element-container:has(.settings-appearance-anchor),.element-container:has(.settings-forecast-anchor),.element-container:has(.settings-details-anchor),.element-container:has(.settings-model-anchor),.element-container:has(.place-row-anchor) { display:none; }
-/* Float only the four sibling panels, preserving their DOM/mobile order.
-   Clearing each side lets Places follow Appearance without waiting for Forecast.
-   A flow root contains expanded forms; no fixed heights or script measurements. */
-@media(min-width:901px) {
- [data-testid="stVerticalBlock"]:has(>.element-container .settings-layout-anchor) { display:flow-root; }
- [data-testid="stVerticalBlock"]:has(>.element-container .settings-layout-anchor)>[data-testid="stVerticalBlockBorderWrapper"] { float:left; clear:left; width:calc(50% - 32px)!important; }
- [data-testid="stVerticalBlock"]:has(>.element-container .settings-layout-anchor)>[data-testid="stVerticalBlockBorderWrapper"]:has(.settings-forecast-anchor),
- [data-testid="stVerticalBlock"]:has(>.element-container .settings-layout-anchor)>[data-testid="stVerticalBlockBorderWrapper"]:has(.settings-account-anchor) { float:right; clear:right; }
+/* Each native column is a complete stack, with natural heights and DOM order. */
+@media(max-width:900px) {
+ [data-testid="stVerticalBlock"]:has(>.element-container .settings-layout-anchor)>[data-testid="stHorizontalBlock"] { flex-direction:column; gap:0; }
+ [data-testid="stVerticalBlock"]:has(>.element-container .settings-layout-anchor)>[data-testid="stHorizontalBlock"]>[data-testid="column"] { width:100%!important; flex:1 1 auto!important; min-width:0!important; }
 }
+.element-container:has(.place-add-anchor) { display:none; }
+/* The final place already draws the divider above Add place. */
+[data-testid="stExpander"]:has(.place-add-anchor) { border-top:0; }
 .element-container:has(.settings-model-anchor)+.element-container [role="radiogroup"] { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); width:100%; background:transparent; border:0; padding:0; gap:8px; }
 .element-container:has(.settings-model-anchor)+.element-container [data-baseweb="radio"] { width:100%; height:100%; box-sizing:border-box; align-self:stretch; min-width:0; min-height:44px; justify-content:flex-start; border:1px solid var(--line); padding:10px 14px; background:var(--surface); }
 .element-container:has(.settings-model-anchor)+.element-container [data-baseweb="radio"]:has(input:checked) { background:#193e4d; border-color:#193e4d; }

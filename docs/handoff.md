@@ -2,6 +2,13 @@
 
 ## Estado útil
 
+- Cambio local listo, sin desplegar: `codex/settings-section-order`. Columna izquierda
+  Apariencia → Tu cuenta → Tus lugares; derecha Tu previsión → fuentes. Móvil y DOM
+  siguen ese mismo orden. Añadir lugar ya no duplica el separador del último lugar.
+  Dos AppTests de alias/selección/recuperación y acceso personal correctos; escritorio
+  a 1280 px y móvil a 390 px sin desbordamiento, borde superior de Añadir lugar 0 px.
+  Capturas locales `test-results/settings-section-order-desktop.png` y
+  `test-results/settings-section-order-mobile.png`. Esta petición no incluye despliegue.
 - Producción actual: `b4a8fda4670eab736ca1512b273a4edc39d0a3ce`, desplegada por petición
   de Iván desde `codex/settings-independent-columns`. Actions 39655736686 correcto:
   84 Python + 16 Node y disparador API. Imagen exacta running/healthy, HTTPS/health

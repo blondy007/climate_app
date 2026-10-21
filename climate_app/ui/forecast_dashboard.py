@@ -179,6 +179,7 @@ def location_controls(store):
                         place_action("close", "Cancelar alias", submit=True, help="Cancelar edición",
                                      on_click=close_place_action, args=("place_alias_editor",))
     with st.expander("Añadir lugar"):
+        st.markdown('<span class="place-add-anchor"></span>', unsafe_allow_html=True)
         st.caption("Hasta 10 lugares activos. Las ubicaciones y sus previsiones se guardan entre visitas.")
         with st.form("search_forecast_place"):
             query = st.text_input("Buscar ciudad o localidad", max_chars=120)
@@ -623,13 +624,22 @@ def render_settings():
     store.seed()
     st.markdown('<div class="page-intro"><h1>A tu manera.</h1><p>Tus lugares, tu acceso personal y las fuentes que hacen posible tu previsión.</p></div>', unsafe_allow_html=True)
     with st.container():
-        # Keep mobile and keyboard reading order while desktop panels flow independently.
+        # Personal settings stay together, in the same desktop/mobile reading order.
         st.markdown('<span class="settings-layout-anchor"></span>', unsafe_allow_html=True)
-        with st.container():
+        personal, weather = st.columns(2, gap="large")
+        with personal:
             st.markdown('<span class="settings-appearance-anchor"></span>', unsafe_allow_html=True)
             section("Apariencia", "Un aspecto cómodo a cualquier hora.", "sun")
             appearance_controls()
-        with st.container():
+            with st.container():
+                st.markdown('<span class="settings-account-anchor settings-details-anchor"></span>', unsafe_allow_html=True)
+                section("Tu cuenta", "Acceso personal a WeatherNext y al consenso completo.", "layers")
+                owner_login(store)
+            with st.container():
+                st.markdown('<span class="settings-places-anchor settings-details-anchor"></span>', unsafe_allow_html=True)
+                section("Tus lugares", "Añade, quita o recupera tus sitios favoritos.", "pin", anchor="places-section")
+                location_controls(store)
+        with weather:
             st.markdown('<span class="settings-forecast-anchor"></span>', unsafe_allow_html=True)
             section("Tu previsión", "Elige una vez cómo quieres consultar el tiempo.", "layers")
             options = ["auto", "ecmwf", "icon", "gfs", "metno"]
@@ -644,14 +654,8 @@ def render_settings():
             st.radio("Modelo principal", options, format_func=PREFERENCES.get,
                      key="forecast_model_preference", index=options.index(selected), on_change=remember_model)
             st.caption("Recomendado: el consenso combina las fuentes disponibles. Tu elección se recuerda en este navegador; la portada siempre indica qué fuente estás viendo.")
-        with st.container():
-            st.markdown('<span class="settings-places-anchor settings-details-anchor"></span>', unsafe_allow_html=True)
-            section("Tus lugares", "Añade, quita o recupera tus sitios favoritos.", "pin", anchor="places-section")
-            location_controls(store)
-        with st.container():
-            st.markdown('<span class="settings-account-anchor settings-details-anchor"></span>', unsafe_allow_html=True)
-            section("Tu cuenta", "Acceso personal a WeatherNext y al consenso completo.", "layers")
-            owner_login(store)
+        with weather.container():
+            st.markdown('<span class="settings-details-anchor"></span>', unsafe_allow_html=True)
             locations = store.locations()
             if locations:
                 section("Detrás de la previsión", "Fuentes, estaciones y actualización automática.", "clock")

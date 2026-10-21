@@ -113,11 +113,11 @@ Se conservan fuente, identificación de próxima hora, P10–P90 cuando existe,
 hora de actualización, aviso de datos antiguos y nota de estimación a la sombra.
 El fondo mantiene contraste en ambos modos; la ilustración sigue siendo SVG local.
 
-Ajustes en escritorio usa dos columnas independientes: apariencia y lugares a la
-izquierda, previsión y cuenta/fuentes a la derecha. Cada sección empieza al terminar
+Ajustes en escritorio usa dos columnas independientes: apariencia, cuenta y lugares
+a la izquierda; previsión y fuentes a la derecha. Cada sección empieza al terminar
 la anterior de su lado, sin reservar el alto de la columna opuesta. Por debajo de
-901 px se apilan en el mismo orden del documento: apariencia, previsión, lugares y
-cuenta/fuentes. Las secciones mantienen su altura natural al abrir formularios y
+901 px se apilan en el mismo orden del documento: apariencia, cuenta, lugares,
+previsión y fuentes. Las secciones mantienen su altura natural al abrir formularios y
 el salto a Tus lugares apunta a su cabecera visible.
 El modelo principal ocupa una cuadrícula de opciones de ancho uniforme; las filas
 de lugares tienen un solo separador y botones de ancho acotado. Sus reglas CSS
@@ -141,6 +141,8 @@ en línea, con campo, marca de guardar y aspa de cancelar; vacío recupera el no
 original. Quitar exige «Sí, quitar» y conserva Deshacer. En lugares quitados, una
 flecha recupera y el aspa inicia el borrado definitivo con su autorización existente.
 Los iconos son SVG locales sobre botones nativos con etiqueta accesible y foco visible.
+Antes de Añadir lugar solo se dibuja el separador del último lugar, sin duplicarlo
+con el borde superior del desplegable.
 
 Los lugares guardados tienen un icono circular «Actualizar previsión» dentro de la
 cabecera del widget. Consulta las fuentes abiertas de ese lugar y vuelve a calcular
