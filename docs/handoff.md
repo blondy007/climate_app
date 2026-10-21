@@ -2,15 +2,31 @@
 
 ## Estado útil
 
-- Pendiente de publicar: `codex/location-memory-and-deletion`. El navegador recuerda
+- Publicado `a876f18bd8cc516f762c1bf7d063ca6a13ab31e7` con petición explícita de Iván.
+  Rama de trabajo: `codex/location-memory-and-deletion`. El navegador recuerda
   el lugar guardado elegido; la ubicación automática muestra el nombre resuelto
   con BigDataCloud desde coordenadas aproximadas recién obtenidas. Lugares quitados
   permite borrado definitivo con sesión personal y segunda confirmación; transacción
   por ID, protección frente a respuestas tardías y favoritos iniciales sin resurrección.
   77 pruebas Python y 15 Node correctas. Revisión local ficticia: selección conservada
   en pestaña nueva y aviso de borrado en móvil. No se han leído ni eliminado datos de
-  producción. Sin push ni despliegue solicitados para esta petición.
-- Producción verificada: `0ce4b74d9ae44a4ebdcb7db465fe2917ff1055b5`.
+  producción. CI correcto, API 403 y fallback manual de Coolify; imagen exacta
+  running/healthy, HTTPS/health 200, binding/volumen conservados, logs limpios y Kuma 5
+  Funcional. La UI pública muestra Borrar definitivamente para el duplicado quitado.
+- Pendiente: `ac1232e` corrige el aviso de valor por defecto duplicado de Streamlit
+  al restaurar la ubicación. 13 pruebas focalizadas correctas. Auto-review rechazó su
+  push a producción por exigir autorización explícita nueva; pregunta enviada a Iván.
+  No publicar sin esa respuesta. Se observó también un aviso de carga del componente
+  en una pestaña pública de Brave: reaparece tras esperar incluso con tema explícito,
+  aunque el HTML del componente responde 200. Pendiente de acotar; no darlo por resuelto.
+  El registro de infraestructura `ee02d5e` se publicó en `master` con autorización
+  expresa de Iván tras el bloqueo inicial de auto-review.
+- Consulta posterior: el 403 exacto corresponde a `ApiAllowed` de Coolify 4.1.2,
+  filtro de IP permitidas (código oficial); falta identificar la IP que ve Coolify.
+  No se han cambiado permisos, tokens ni configuración. Los lugares guardados no
+  tienen actualización meteorológica manual: Actualizar vista solo relee SQLite;
+  recopilación cada tres horas. Iván preguntó por ello, sin petición de implementación aún.
+- Producción anterior verificada: `0ce4b74d9ae44a4ebdcb7db465fe2917ff1055b5`.
   Corrección de Ajustes aprobada y despliegue solicitado por Iván el 21/10; publicado mediante
   el fallback manual de Coolify. CI: 71 pruebas Python + 12 Node correctas.
 - Histórico: tabla corregida en claro/oscuro; comprobación pública a 320/390 px,
