@@ -2,14 +2,22 @@
 
 ## Estado útil
 
-- Corrección lista para desplegar por petición de Iván: `codex/settings-independent-columns`.
+- Producción actual: `b4a8fda4670eab736ca1512b273a4edc39d0a3ce`, desplegada por petición
+  de Iván desde `codex/settings-independent-columns`. Actions 39655736686 correcto:
+  84 Python + 16 Node y disparador API. Imagen exacta running/healthy, HTTPS/health
+  200, arranque limpio, Kuma 5 Up, volumen y binding conservados. Rollback: `11cf633`.
   Ajustes usa columnas con alturas independientes en escritorio: lugares sigue a
   apariencia sin esperar a previsión; cuenta sigue a previsión. Se mantiene el orden
   móvil/DOM y el ancla visible de Tus lugares. Verificado a 390/900/901/1280 px,
   sin desbordamiento, con formularios abiertos y claro/oscuro. Dos AppTests de alias,
   selección, recuperación y acceso personal correctos. Capturas locales:
   `test-results/settings-independent-columns-desktop.png` y `settings-independent-columns-mobile.png`.
-- Producción actual: `11cf633a1a3c8bf9f38c232ca1da32e3789874a5`, publicada por petición
+  Aceptación pública de escritorio a 1280 px: contenedores de apariencia/lugares
+  contiguos y sin desbordamiento. Evidencia: `test-results/settings-independent-columns-production.png`.
+  Registro canónico publicado en oracle-vps-infra master como `3fd2e27`. Sin tareas
+  pendientes de este despliegue; la interrupción por cuota ocurrió después del push
+  y no hizo falta volver a desplegar.
+- Controles de lugares: `11cf633a1a3c8bf9f38c232ca1da32e3789874a5`, publicada por petición
   de Iván desde `codex/compact-place-controls`. Actions 39653861713: 84 Python + 16 Node
   correctas y disparador API correcto. Imagen exacta running/healthy, HTTPS/health 200,
   logs de arranque limpios, Kuma 5 Up, volumen y binding local conservados. Tus lugares
