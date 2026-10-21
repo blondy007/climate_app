@@ -2,6 +2,13 @@
 
 ## Estado útil
 
+- Cambio local pendiente de despliegue: `codex/compact-place-controls`. Tus lugares
+  usa lápiz y aspa por fila, alias en línea con guardar/cancelar y confirmación antes
+  de quitar. Lugares quitados usa recuperar/aspa; borrado definitivo mantiene sesión
+  personal y confirmación. 9 pruebas enfocadas correctas (alias, cancelación, duplicados,
+  selección, recuperación y autorización). Capturas locales con datos ficticios en
+  `test-results/compact-place-controls-mobile.png` y `compact-place-confirmation-mobile.png`.
+  No se ha publicado ni desplegado esta interfaz.
 - Producción verificada: `083c25c6dba25827baccdf5a6a10a0f437bc4ad0`.
   Rama de trabajo `codex/manual-weather-refresh`. Despliegue y registro documental
   aprobados expresamente por Iván. Actions 39647808142: 83 Python + 16 Node correctas

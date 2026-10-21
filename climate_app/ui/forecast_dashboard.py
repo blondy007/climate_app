@@ -81,10 +81,45 @@ def restore_place(store, location):
     st.session_state["scroll_target"] = "places-section"
 
 
+def place_action(icon_name, label, *, submit=False, **kwargs):
+    """Native accessible controls, illustrated with the shared local SVG icons."""
+    st.markdown(f'<span class="place-action-icon place-action-{icon_name}"></span>', unsafe_allow_html=True)
+    return (st.form_submit_button if submit else st.button)(label, **kwargs)
+
+
+def open_place_action(action, identity):
+    st.session_state["scroll_target"] = "places-section"
+    toggle_off = st.session_state.get(action) == identity and action == "place_alias_editor"
+    for key in ("place_alias_editor", "remove_place_pending", "delete_place_pending"):
+        st.session_state.pop(key, None)
+    if not toggle_off:
+        st.session_state[action] = identity
+    if action == "place_alias_editor":
+        st.session_state.pop(f"alias_input_{identity}", None)
+
+
+def close_place_action(action):
+    st.session_state.pop(action, None)
+    st.session_state["scroll_target"] = "places-section"
+
+
+def save_place_alias(store, identity):
+    st.session_state["scroll_target"] = "places-section"
+    try:
+        store.set_alias(identity, st.session_state[f"alias_input_{identity}"])
+        st.session_state.pop("place_alias_editor", None)
+        st.session_state["place_notice"] = "Alias guardado."
+    except ValueError as exc:
+        st.session_state["place_alias_error"] = str(exc)
+
+
 def location_controls(store):
     notice = st.session_state.pop("place_notice", None)
     if notice:
         st.success(notice)
+    alias_error = st.session_state.pop("place_alias_error", None)
+    if alias_error:
+        st.warning(alias_error)
     removed = st.session_state.get("removed_place")
     if removed:
         location = next((loc for loc in store.locations(include_inactive=True) if loc.id == removed["id"]), None)
@@ -103,30 +138,46 @@ def location_controls(store):
     for location in locations:
         with st.container():
             st.markdown('<span class="place-row-anchor"></span>', unsafe_allow_html=True)
-            info, action = st.columns([3, 1])
+            info, edit, remove = st.columns([6, 1, 1])
             info.markdown(f'<div class="place-label"><strong>{text(location.alias or location.name)}</strong><span>{text(location.name) + " · " if location.alias else ""}{location.latitude:.4f}, {location.longitude:.4f}</span></div>', unsafe_allow_html=True)
-            if action.button("Quitar", key=f"remove_place_{location.id}", use_container_width=True,
-                             help=f"Quitar {location.display_name} de tus lugares sin borrar su historial"):
-                store.deactivate(location.id)
-                selected = st.session_state.get("selected_forecast_location") == location.id
-                if selected:
-                    st.session_state.pop("selected_forecast_location", None)
-                    st.session_state.pop("forecast_location", None)
-                st.session_state["removed_place"] = {"id": location.id, "selected": selected}
-                st.session_state["scroll_target"] = "places-section"
-                st.rerun()
-            with st.expander("Cambiar alias", expanded=False):
+            with edit:
+                place_action("edit", f"Cambiar alias de {location.display_name}", key=f"edit_alias_{location.id}", help="Cambiar alias",
+                             on_click=open_place_action, args=("place_alias_editor", location.id))
+            with remove:
+                place_action("close", f"Quitar {location.display_name}", key=f"remove_place_{location.id}",
+                             help="Quitar lugar", on_click=open_place_action, args=("remove_place_pending", location.id))
+            if st.session_state.get("remove_place_pending") == location.id:
+                with st.container():
+                    st.markdown('<span class="place-confirm-anchor"></span>', unsafe_allow_html=True)
+                    st.markdown(f"¿Quitar **{text(location.display_name)}** ({location.latitude:.4f}, {location.longitude:.4f})?")
+                    st.caption("Se detendrá la recopilación. Podrás recuperarlo con su historial.")
+                    confirm, cancel = st.columns(2)
+                    if confirm.button("Sí, quitar", key=f"confirm_remove_place_{location.id}"):
+                        store.deactivate(location.id)
+                        selected = st.session_state.get("selected_forecast_location") == location.id
+                        if selected:
+                            st.session_state.pop("selected_forecast_location", None)
+                            st.session_state.pop("forecast_location", None)
+                        st.session_state["removed_place"] = {"id": location.id, "selected": selected}
+                        st.session_state.pop("remove_place_pending", None)
+                        st.session_state["scroll_target"] = "places-section"
+                        st.rerun()
+                    cancel.button("Cancelar", key=f"cancel_remove_place_{location.id}",
+                                  on_click=close_place_action, args=("remove_place_pending",))
+            if st.session_state.get("place_alias_editor") == location.id:
                 with st.form(f"alias_form_{location.id}"):
-                    alias = st.text_input("Alias", value=location.alias or "", max_chars=60,
-                                          placeholder="Casa, trabajo, playa…", key=f"alias_input_{location.id}")
-                    st.caption(f"Lugar original: {location.name}. Deja el alias vacío para volver a su nombre original.")
-                    if st.form_submit_button("Guardar alias"):
-                        try:
-                            store.set_alias(location.id, alias)
-                            st.session_state["place_notice"] = "Alias guardado. Las coordenadas y el historial se mantienen."
-                            st.rerun()
-                        except ValueError as exc:
-                            st.warning(str(exc))
+                    st.markdown('<span class="place-alias-anchor"></span>', unsafe_allow_html=True)
+                    field, save, cancel = st.columns([6, 1, 1])
+                    with field:
+                        st.text_input("Alias", value=location.alias or "", max_chars=60,
+                                      placeholder="Casa, trabajo, playa…", key=f"alias_input_{location.id}",
+                                      label_visibility="collapsed", help=f"Lugar original: {location.name}. Déjalo vacío para usar su nombre original.")
+                    with save:
+                        place_action("check", "Guardar alias", submit=True, help="Guardar alias",
+                                     on_click=save_place_alias, args=(store, location.id))
+                    with cancel:
+                        place_action("close", "Cancelar alias", submit=True, help="Cancelar edición",
+                                     on_click=close_place_action, args=("place_alias_editor",))
     with st.expander("Añadir lugar"):
         st.caption("Hasta 10 lugares activos. Las ubicaciones y sus previsiones se guardan entre visitas.")
         with st.form("search_forecast_place"):
@@ -175,17 +226,19 @@ def location_controls(store):
             for location in inactive:
                 with st.container():
                     st.markdown('<span class="place-row-anchor"></span>', unsafe_allow_html=True)
-                    info, action = st.columns([3, 1])
+                    info, action, remove = st.columns([6, 1, 1])
                     info.markdown(f'<div class="place-label"><strong>{text(location.display_name)}</strong><span>{location.latitude:.4f}, {location.longitude:.4f}</span></div>', unsafe_allow_html=True)
-                    if action.button("Recuperar", key=f"restore_place_{location.id}", use_container_width=True,
-                                     disabled=len(locations) >= 10, help=f"Volver a añadir {location.display_name}"):
-                        try:
-                            restore_place(store, location)
-                            st.rerun()
-                        except ValueError as exc:
-                            st.warning(str(exc))
-                    if st.button("Borrar definitivamente", key=f"delete_place_{location.id}"):
-                        st.session_state["delete_place_pending"] = location.id
+                    with action:
+                        if place_action("restore", f"Recuperar {location.display_name}", key=f"restore_place_{location.id}",
+                                        disabled=len(locations) >= 10, help="Recuperar lugar"):
+                            try:
+                                restore_place(store, location)
+                                st.rerun()
+                            except ValueError as exc:
+                                st.warning(str(exc))
+                    with remove:
+                        place_action("close", f"Borrar definitivamente {location.display_name}", key=f"delete_place_{location.id}", help="Borrar definitivamente",
+                                     on_click=open_place_action, args=("delete_place_pending", location.id))
                     if st.session_state.get("delete_place_pending") == location.id:
                         st.warning(f"Se borrará definitivamente {location.display_name} ({location.latitude:.4f}, {location.longitude:.4f}), junto con sus previsiones, observaciones y alias. No se puede deshacer.")
                         if not authenticated():

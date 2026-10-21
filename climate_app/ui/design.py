@@ -35,6 +35,10 @@ def icon(name, size=22):
         "sun": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/>',
         "settings": '<circle cx="12" cy="12" r="3"/><path d="m9 3-1 3-3 1-2 3 2 2-1 4 3 2 3-1 3 3 3-2v-3l4-2-1-4-3-1-1-4Z"/>',
         "refresh": '<path d="M20 8a8 8 0 0 0-14-2L3 9m0-6v6h6M4 16a8 8 0 0 0 14 2l3-3m0 6v-6h-6"/>',
+        "edit": '<path d="m15 4 5 5M4 20l5-1L21 7a2 2 0 0 0-5-5L4 14l-1 7Z"/>',
+        "close": '<path d="m6 6 12 12M6 18 18 6"/>',
+        "check": '<path d="m5 12 4 4L19 6"/>',
+        "restore": '<path d="M4 4v6h6M4 10a8 8 0 1 1 1 8"/>',
     }
     return f'<svg xmlns="http://www.w3.org/2000/svg" class="line-icon" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{paths.get(name, paths["chart"])}</svg>'
 
@@ -96,6 +100,9 @@ def apply_design():
     css += f'[data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) button::before {{mask-image:url("data:image/svg+xml;base64,{settings_icon}");}}'
     refresh_icon = base64.b64encode(icon("refresh").encode()).decode()
     css += f'.element-container:has(.hero-can-refresh)+.element-container button::before {{mask-image:url("data:image/svg+xml;base64,{refresh_icon}");}}'
+    for name in ("edit", "close", "check", "restore"):
+        encoded = base64.b64encode(icon(name).encode()).decode()
+        css += f'.element-container:has(.place-action-{name})+.element-container button::before {{mask-image:url("data:image/svg+xml;base64,{encoded}");}}'
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 

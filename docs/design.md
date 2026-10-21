@@ -131,7 +131,12 @@ previsión con la etiqueta genérica.
 En Lugares quitados se puede recuperar o borrar definitivamente un lugar. El
 borrado muestra nombre y coordenadas para distinguir duplicados y requiere sesión
 personal y una segunda confirmación. Elimina el archivo del lugar elegido; quitar
-un lugar continúa siendo reversible. Los controles conservan ancho legible en móvil.
+un lugar continúa siendo reversible. Cada fila reúne nombre, coordenadas y controles
+de 44 × 44 px: lápiz para el alias y aspa para quitar. El lápiz abre solo un editor
+en línea, con campo, marca de guardar y aspa de cancelar; vacío recupera el nombre
+original. Quitar exige «Sí, quitar» y conserva Deshacer. En lugares quitados, una
+flecha recupera y el aspa inicia el borrado definitivo con su autorización existente.
+Los iconos son SVG locales sobre botones nativos con etiqueta accesible y foco visible.
 
 Los lugares guardados tienen un icono circular «Actualizar previsión» dentro de la
 cabecera del widget. Consulta las fuentes abiertas de ese lugar y vuelve a calcular
