@@ -473,7 +473,9 @@ def render_forecast_dashboard(evaluation=False):
     def choose_location():
         st.session_state["selected_forecast_location"] = st.session_state["forecast_location"]
         st.session_state["browser_forecast_preferences_loaded"] = True
-    location_id = picker.radio("Lugar", choices, index=choices.index(selected),
+    if st.session_state.get("forecast_location") not in choices:
+        st.session_state["forecast_location"] = selected
+    location_id = picker.radio("Lugar", choices, index=None,
                                format_func=labels.get, key="forecast_location", label_visibility="collapsed",
                                horizontal=True, on_change=choose_location)
     def open_settings():

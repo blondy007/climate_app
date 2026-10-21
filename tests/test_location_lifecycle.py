@@ -83,9 +83,11 @@ class LocationLifecycleTests(unittest.TestCase):
     def test_preferences_restore_active_place_into_both_selection_keys_and_ignore_removed(self):
         with patch.object(browser_location, "_bridge", return_value={"kind": "preferences", "nonce": "restore", "place_id": self.second}), \
              patch.dict(os.environ, {"CLIMATE_FORECAST_DB": str(self.path)}), \
+             patch("streamlit.elements.lib.policies._shown_default_value_warning", False), \
              patch("climate_app.auth.owner_config", return_value=None):
             app = AppTest.from_file(str(Path(__file__).parents[1] / "app.py")).run(timeout=30)
         self.assertFalse(app.exception)
+        self.assertFalse(any("forecast_location" in warning.value for warning in app.warning))
         self.assertEqual(app.radio(key="forecast_location").value, self.second)
         self.assertEqual(app.session_state["selected_forecast_location"], self.second)
         self.store.deactivate(self.second)
