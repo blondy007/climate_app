@@ -2,13 +2,21 @@
 
 ## Estado útil
 
-- Producción verificada: `29632a78d605d76c7b4c3b14abda2e3b201568e5`.
-  Iván hizo cherry-pick y redespliegue manual. 70 pruebas Python + 12 Node correctas.
+- Producción verificada: `5c098b4b9fd54fd53fe9c8880ba35d38082b33d6`.
+  Rediseño aprobado y despliegue solicitado por Iván el 21/10; publicado mediante
+  el fallback manual de Coolify. CI: 71 pruebas Python + 12 Node correctas.
 - Histórico: tabla corregida en claro/oscuro; comprobación pública a 320/390 px,
   sin scroll horizontal de página. Cabecera y selección de lugares también resueltas.
 - Servidor healthy, HTTPS 200, Kuma Funcional. El trigger automático de Coolify
   devuelve 403; el despliegue manual sí funciona. No investigar ese fallo salvo petición.
-- No hay otra corrección pendiente de esta conversación. Esperar los siguientes cambios.
+- Rediseño del widget publicado desde `codex/current-weather-redesign`.
+  Temperatura/sensación a la izquierda,
+  ilustración/condición a la derecha y rangos en una franja inferior. Actualizar
+  ubicación es un icono circular nativo dentro de la cabecera; reintentos conservados.
+  21 pruebas focalizadas + 1 integración de actualización/recuperación correctas.
+  Vista local ficticia comprobada a 320/390 px en claro/oscuro y escritorio.
+  Aceptación pública móvil a 390 px; captura: `test-results/current-widget-production.png`.
+  Diseño en `docs/design.md`. No hay cambios pendientes de este rediseño.
 
 ## Preferencias y límites
 
