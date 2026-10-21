@@ -2,90 +2,55 @@
 
 ## Estado útil
 
-- Trabajo actual preparado en `codex/manual-weather-refresh`: icono Actualizar
-  previsión en el widget de lugares guardados, consulta real de fuentes abiertas,
-  consenso público con método existente y límite compartido de quince minutos.
-  Fallos conservan el archivo y se respeta la cuota diaria y Expires de MET Norway.
-  Sin cambios de investigación ni activación de WeatherNext. Suite completa de
-  83 Python correcta; después se corrigió un None transitorio del selector al cambiar
-  las opciones y se verificaron 19 pruebas focalizadas + 16 Node correctas.
-  Tras el bloqueo de Windows se repitió la verificación focalizada y se completó
-  la revisión móvil local a 390 px: clic cambia la previsión ficticia de 18 a 21 °C,
-  muestra confirmación y desactiva el icono durante el plazo compartido.
-  Captura: `test-results/manual-refresh-mobile.png`.
-- Coolify: Iván autorizó añadir únicamente `10.0.2.1/32` a las IP permitidas de
-  la API. Aplicado y confirmado por SSH: `100.64.0.0/10,10.0.2.1/32`, API habilitada.
-  Logs de Nginx muestran la pasarela Docker `10.0.2.1` como cliente de peticiones
-  llegadas por Tailscale. El helper real admite la pasarela y rechaza `203.0.113.50`.
-  Falta validar un disparador real de Actions tras desplegar la nueva versión.
-  No se han rotado tokens ni cambiado puertos o exposición. Rollback: retirar solo
-  `10.0.2.1/32` de Settings → Advanced → Allowed IPs for API Access.
-- La nueva versión aún NO se ha publicado ni desplegado; incluye la corrección
-  `ac1232e` y refuerza el watchdog para montajes tardíos (máximo tres recuperaciones
-  por iframe, sin reemplazar documentos activos). Se necesita petición explícita de
-  despliegue conforme a AGENTS antes de push a producción.
-- Siguiente orientación de producto, sin iniciar migración: separar front y back
-  para web de escritorio y móvil, Android muy probable e iPhone posible.
-- Publicado `a876f18bd8cc516f762c1bf7d063ca6a13ab31e7` con petición explícita de Iván.
-  Rama de trabajo: `codex/location-memory-and-deletion`. El navegador recuerda
-  el lugar guardado elegido; la ubicación automática muestra el nombre resuelto
-  con BigDataCloud desde coordenadas aproximadas recién obtenidas. Lugares quitados
-  permite borrado definitivo con sesión personal y segunda confirmación; transacción
-  por ID, protección frente a respuestas tardías y favoritos iniciales sin resurrección.
-  77 pruebas Python y 15 Node correctas. Revisión local ficticia: selección conservada
-  en pestaña nueva y aviso de borrado en móvil. No se han leído ni eliminado datos de
-  producción. CI correcto, API 403 y fallback manual de Coolify; imagen exacta
-  running/healthy, HTTPS/health 200, binding/volumen conservados, logs limpios y Kuma 5
-  Funcional. La UI pública muestra Borrar definitivamente para el duplicado quitado.
-- `ac1232e`, incluido en el trabajo actual, corrige el aviso de valor por defecto
-  duplicado de Streamlit al restaurar la ubicación. Su push aislado fue rechazado por
-  auto-review por exigir autorización nueva. Se observó también un aviso del componente
-  en una pestaña pública de Brave: reaparece tras esperar incluso con tema explícito,
-  aunque el HTML del componente responde 200. Pendiente de acotar; no darlo por resuelto.
-  El registro de infraestructura `ee02d5e` se publicó en `master` con autorización
-  expresa de Iván tras el bloqueo inicial de auto-review.
-- Producción anterior verificada: `0ce4b74d9ae44a4ebdcb7db465fe2917ff1055b5`.
-  Corrección de Ajustes aprobada y despliegue solicitado por Iván el 21/10; publicado mediante
-  el fallback manual de Coolify. CI: 71 pruebas Python + 12 Node correctas.
-- Histórico: tabla corregida en claro/oscuro; comprobación pública a 320/390 px,
-  sin scroll horizontal de página. Cabecera y selección de lugares también resueltas.
-- Servidor healthy, HTTPS 200, Kuma Funcional en la última aceptación publicada.
-  El fallback manual funciona; el filtro que provocaba 403 se corrigió como se indica arriba.
-- Rediseño del widget publicado desde `codex/current-weather-redesign`.
-  Temperatura/sensación a la izquierda,
-  ilustración/condición a la derecha y rangos en una franja inferior. Actualizar
-  ubicación es un icono circular nativo dentro de la cabecera; reintentos conservados.
-  21 pruebas focalizadas + 1 integración de actualización/recuperación correctas.
-  Vista local ficticia comprobada a 320/390 px en claro/oscuro y escritorio.
-  Aceptación pública móvil a 390 px; captura: `test-results/current-widget-production.png`.
-  Diseño en `docs/design.md`. No hay cambios pendientes de este rediseño.
-- Corrección de Ajustes publicada desde `codex/settings-desktop-layout`:
-  columnas alineadas en PC, modelos en cuadrícula, filas de lugares sin bordes
-  duplicados, fuentes bajo su título y formularios sin solapamientos. Cuatro
-  pruebas focalizadas correctas; revisión local ficticia en escritorio 1024/1440 px
-  y móvil 320 px oscuro, sin desbordamiento. Aceptación pública de PC a 1440 px,
-  imagen exacta healthy, HTTPS/health 200, logs de arranque sin errores y Kuma 5
-  Funcional. Captura: `test-results/settings-production-desktop.png`.
-  Registro de infraestructura `1fbc973` publicado en `master` de `oracle-vps-infra`
-  con autorización explícita de Iván. Sin tareas pendientes de esta corrección.
+- Producción verificada: `083c25c6dba25827baccdf5a6a10a0f437bc4ad0`.
+  Rama de trabajo `codex/manual-weather-refresh`. Despliegue y registro documental
+  aprobados expresamente por Iván. Actions 39647808142: 83 Python + 16 Node correctas
+  y disparador API correcto. Despliegue completamente automático, sin fallback.
+- Actualizar previsión es un icono circular dentro del widget de lugares guardados.
+  Consulta las cuatro fuentes abiertas, conserva cuota gratuita, respeta Expires de
+  MET Norway y recalcula el consenso público con el método existente. Límite por lugar
+  compartido de quince minutos en SQLite; fallos conservan los datos anteriores.
+  Funciona también sin previsión previa. WeatherNext y lluvia experimental intactos.
+- Pruebas aisladas: cuota, caché, concurrencia, duplicados, fallos parciales/totales,
+  selector sin None al cambiar opciones y recuperación del componente montado tarde.
+  Clic local a 390 px cambió datos ficticios de 18 a 21 °C. Prueba real de Los Narejos
+  autorizada aparte tras rechazo de auto-review: éxito a las 19:57 CEST, hora actualizada
+  e icono desactivado. Captura pública: `test-results/manual-refresh-production.png`.
+- Imagen exacta running/healthy, HTTPS/health 200, sesión anónima no-store, logs limpios,
+  binding 127.0.0.1:8501 y volumen original conservados. Kuma 5 Funcional desde 19:56
+  tras el reemplazo (404 breve a las 19:55). No se leyó/exportó SQLite ni credenciales
+  de producción para verificar la interfaz; solo se ejecutó la actualización aprobada.
+- Coolify 403 resuelto: su lista solo admitía Tailscale, pero Nginx ve la pasarela
+  Docker 10.0.2.1. Excepción /32 autorizada, persistida y verificada por SSH; API admite
+  la pasarela y rechaza una IP externa. Actions real confirma el arreglo. Se mantienen
+  token, panel privado y puertos. Rollback: retirar únicamente 10.0.2.1/32 de la lista.
+- Selección recordada por navegador, nombre aproximado de ubicación automática y
+  borrado definitivo de lugares quitados ya publicados. El borrado exige sesión personal
+  y segunda confirmación; elimina solo el ID elegido. No se borraron lugares reales.
+  Los rediseños de portada, histórico y Ajustes están resueltos: no reabrirlos.
+- Registros de infraestructura `2a442d3` y cierre `01ad94c` publicados en master de
+  oracle-vps-infra: versión activa, modo automático y aceptación real documentados.
+  Sin tareas pendientes de esta corrección ni otro despliegue de aplicación.
 
 ## Preferencias y límites
 
-- Iván quiere contexto reducido, respuestas breves y verificaciones proporcionadas.
-- No desplegar automáticamente: preparar correcciones e instrucciones cuando se solicite.
-- App pública desde móvil sin Tailscale; administración privada de VPS con Tailscale.
-- Login personal con persistencia ya implementado. WeatherNext pendiente de Google.
-- No volver a probar credenciales ni consultar la base de producción para comprobar UI.
+- Respuestas breves y verificaciones proporcionadas. No repetir comprobaciones sin motivo.
+- No desplegar ni hacer push a oracle-production sin petición explícita nueva. Los commits
+  locales de continuidad no deben provocar otro despliegue.
+- App pública desde móvil sin Tailscale; administración privada con Tailscale. Coste 0 EUR.
+- Login personal persistente implementado; WeatherNext espera aprobación real de Google.
+- Después de cerrar este trabajo, Iván prevé separar front y back para web de escritorio
+  y móvil, Android muy probable e iPhone posible. No se ha iniciado la migración.
 
 ## Consultar solo si aplica
 
-- Interfaz: `climate_app/ui/weather.css`, `design.py`, `dashboard.py`,
-  `forecast_dashboard.py`; criterios en `docs/design.md`.
-- Operación: `docs/operations.md` y skill `oracle-vps-ops`.
-- Radar: `research/nowcast/README.md` e informe `results/2026-10-20.md`.
-  Captura congelada hasta 27/10/2026 20:00:15 UTC como máximo; no pública.
-  El heartbeat `validar-lluvia-de-climateapp` sigue en el chat anterior: no duplicarlo.
-- Los adjuntos de usuario sin versionar se conservan. `test-results/` es local e ignorado;
-  no cargar su historial completo. Evidencia última: `history-table-public-dark.png`.
+- Interfaz y actualización: climate_app/ui/forecast_dashboard.py, design.py, weather.css;
+  climate_app/forecast/refresh.py; criterios en docs/design.md y docs/operations.md.
+- Operación: skill oracle-vps-ops y repo local Oracle_cloud/oracle-vps-infra.
+- Radar separado: research/nowcast/README.md e informe results/2026-10-20.md. Captura
+  congelada como máximo hasta 27/10/2026 20:00:15 UTC; no ampliar ni publicar.
+  Heartbeat validar-lluvia-de-climateapp en el chat anterior: no duplicarlo.
+- Adjuntos sin versionar conservados. test-results es local e ignorado; no cargar su
+  cronología completa. Las capturas y fixtures no contienen credenciales reales.
 
 Este resumen es el punto de partida del chat nuevo; no es una orden de iniciar trabajos.
