@@ -24,8 +24,8 @@
   y móvil 320 px oscuro, sin desbordamiento. Aceptación pública de PC a 1440 px,
   imagen exacta healthy, HTTPS/health 200, logs de arranque sin errores y Kuma 5
   Funcional. Captura: `test-results/settings-production-desktop.png`.
-  Registro de infraestructura guardado localmente en `1fbc973`; su push a `master`
-  fue rechazado por revisión automática y se pidió autorización explícita para publicarlo.
+  Registro de infraestructura `1fbc973` publicado en `master` de `oracle-vps-infra`
+  con autorización explícita de Iván. Sin tareas pendientes de esta corrección.
 
 ## Preferencias y límites
 
