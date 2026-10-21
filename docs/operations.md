@@ -93,6 +93,10 @@ integral. La restauración aislada se comprueba con sesiones sintéticas; no se
 exporta la base ni las credenciales de producción para probarla. Los canjes y
 pruebas entre navegador y sesión web son de un solo uso y caducan en 90/60 segundos.
 Las rutas conservan XSRF y validan origen; no transmiten el token de cookie a JavaScript.
+La recuperación inicial lee la cookie mediante `st.context.cookies` en el servidor.
+Si el navegador deja el componente en `about:blank` tras recargar, un recuperador
+acotado carga el mismo HTML local en ese iframe, conservando su sandbox; nunca
+reemplaza un documento activo ni admite contenido de otro origen o ruta.
 Cerrar sesión revoca el acceso recordado y avisa a las otras pestañas.
 Sin marcar la opción, la sesión solo pertenece a la conexión web y caduca a las
 24 horas. Cambiar la credencial invalida las sesiones existentes. Se permiten cinco intentos por

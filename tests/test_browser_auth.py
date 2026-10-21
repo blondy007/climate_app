@@ -52,6 +52,26 @@ class BrowserSessionTests(unittest.TestCase):
         self.assertIsNone(self.sessions.restore(issued["cookie"], OWNER))
         self.assertIsNone(self.sessions.consume_proof(restored["proof"], OWNER))
 
+    def test_connection_cookie_restores_server_side_without_browser_proof_and_respects_logout(self):
+        from climate_app import auth
+        from types import SimpleNamespace
+        config = {"username": "fixture-owner", "password_hash": "fixture-hash"}
+        owner = auth.fingerprint(config)
+        issued = self.sessions.exchange(self.sessions.issue_exchange(owner), owner)
+        state = {}
+        with patch.object(auth.st, "session_state", state), \
+             patch.object(auth.st, "context", SimpleNamespace(cookies={COOKIE: issued["cookie"]})), \
+             patch.object(auth, "owner_config", return_value=config), \
+             patch("climate_app.browser_auth.BrowserSessions", return_value=self.sessions):
+            auth.restore_owner_session()
+            self.assertTrue(auth.authenticated())
+            auth.clear_owner_session()
+            auth.restore_owner_session()
+            self.assertFalse(auth.authenticated())  # The initial websocket cookie cannot undo logout.
+            self.sessions.revoke(token_hash(issued["cookie"]))
+            self.assertIsNone(self.sessions.identify(issued["cookie"], owner))
+        self.assertIsNone(self.sessions.identify(issued["cookie"], "different-owner"))
+
     def test_logout_cancels_a_login_in_flight_even_after_cookie_issuance(self):
         code = self.sessions.issue_exchange(OWNER)
         issued = self.sessions.exchange(code, OWNER)

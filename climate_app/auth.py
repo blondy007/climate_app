@@ -73,6 +73,25 @@ def clear_owner_session():
         st.session_state.pop(key, None)
 
 
+def restore_owner_session():
+    """Read the initial connection cookie server-side, once per web session."""
+    state = st.session_state
+    if state.get("owner_cookie_checked"):
+        return
+    state["owner_cookie_checked"] = True
+    if state.get("owner_logout_pending") or state.get("owner_authenticated"):
+        return
+    from climate_app.browser_auth import BrowserSessions, COOKIE
+    config = owner_config()
+    cookie = st.context.cookies.get(COOKIE)
+    restored = BrowserSessions().identify(cookie, fingerprint(config)) if config and cookie else None
+    if restored:
+        state["owner_authenticated"] = fingerprint(config)
+        state["owner_login_time"] = stamp(utcnow())
+        state["owner_browser_session"] = restored["session_hash"]
+        state["owner_browser_expires"] = restored["expires_at"]
+
+
 def owner_login(store):
     with st.expander("Acceso personal · WeatherNext", expanded=False):
         if authenticated():

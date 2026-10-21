@@ -1,0 +1,24 @@
+<script>
+(() => {
+  const root = window.parent;
+  if (root.climateAppBridgeWatchdog) return;
+  root.climateAppBridgeWatchdog = true;
+  const check = async () => {
+    const frame = root.document.querySelector('iframe[title*="climateapp_browser_"]');
+    if (!frame) return;
+    try {
+      const url = new URL(frame.src, root.location.href);
+      if (url.origin !== root.location.origin || !/^\/component\/climate_app\.ui\.browser_location\.climateapp_browser_[a-f0-9]{10}\/index\.html$/.test(url.pathname)) return;
+      // Some browser reloads leave the first iframe navigation at about:blank.
+      // Inline the same first-party asset only for that failed navigation.
+      // An active permission/login document is never replaced.
+      if (frame.contentDocument?.URL !== "about:blank") return;
+      const response = await root.fetch(url.href, {credentials: "same-origin", cache: "no-store", redirect: "error"});
+      if (!response.ok || !response.headers.get("Content-Type")?.startsWith("text/html")) return;
+      const source = await response.text();
+      if (frame.isConnected && frame.contentDocument?.URL === "about:blank") frame.srcdoc = source;
+    } catch (_) { /* Normal cross-origin frame protections stay in place. */ }
+  };
+  setTimeout(check, 3000);
+})();
+</script>
