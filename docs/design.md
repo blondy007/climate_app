@@ -36,6 +36,12 @@ desplaza directamente a Tus lugares. El modelo principal se elige mediante una
 lista de opciones en Ajustes y se recuerda por navegador; la portada identifica
 siempre la fuente efectiva y avisa si debe utilizar otra disponible.
 Los indicadores se centran, con cuatro columnas en escritorio y dos en móvil.
+Los contenedores internos limitan su ancho al disponible, también después de
+cambiar la orientación o pasar de escritorio a móvil. Los indicadores nativos
+invisibles de los botones quedan anclados a su propia opción, dentro del scroll
+de lugares. La página no se desplaza lateralmente; las franjas de lugares y horas
+conservan su desplazamiento independiente. Los scripts invisibles siguen montados
+fuera del flujo y el CSS no reserva una fila vacía encima de la marca.
 
 Las filas diarias son botones accesibles con teclado y área táctil completa.
 El contenedor Markdown de cada fila elimina el margen negativo de Streamlit
