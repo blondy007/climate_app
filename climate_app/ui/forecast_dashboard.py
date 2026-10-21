@@ -208,6 +208,11 @@ def provider_status(store, location):
             st.info("El recolector todavía no ha iniciado su primera descarga.")
 
 
+def refresh_device_location():
+    st.session_state["device_location_request"] = st.session_state.get("device_location_request", 0) + 1
+    st.session_state.pop("device_location_error", None)
+
+
 def forecast_view(store, location, frame):
     frame = with_feels_like(frame)
     hero = st.empty()
@@ -222,11 +227,17 @@ def forecast_view(store, location, frame):
     main = frame[frame.provider == provider].sort_values("valid_time")
     if main.empty:
         st.info("Esta fuente no cubre el horizonte elegido. Prueba otro modelo o un plazo más corto.")
+        if location.id.startswith("auto:"):
+            st.button("Volver a localizar", key="refresh_device_location", on_click=refresh_device_location)
         return
     first = main.iloc[0]
     updated = main.fetched_at.max().tz_convert(location.timezone)
     stale = now - main.fetched_at.max() > pd.Timedelta(hours=9)
-    hero.markdown(hero_html(location, first, main, CHART_LABELS[provider], updated, stale), unsafe_allow_html=True)
+    refreshable = location.id.startswith("auto:")
+    with hero.container():
+        st.markdown(hero_html(location, first, main, CHART_LABELS[provider], updated, stale, refreshable), unsafe_allow_html=True)
+        if refreshable:
+            st.button("Actualizar ubicación", key="refresh_device_location", on_click=refresh_device_location)
     if stale:
         st.warning("Esta previsión tiene más de 9 horas. Consulta el estado de las fuentes en Ajustes.")
     daily = daily_summary(main, location.timezone)
@@ -450,15 +461,11 @@ def render_forecast_dashboard(evaluation=False):
             st.info(error)
         elif location is None:
             st.caption("Localizando… Si el navegador te pide permiso, permite el acceso a tu ubicación.")
-        else:
-            st.markdown('<p class="device-location-note">Ubicación aproximada · Solo durante esta visita</p>', unsafe_allow_html=True)
-        def refresh_location():
-            st.session_state["device_location_request"] = st.session_state.get("device_location_request", 0) + 1
-            st.session_state.pop("device_location_error", None)
-        st.button("Volver a localizar" if error else "Actualizar ubicación", key="refresh_device_location", on_click=refresh_location)
         if location is None:
+            st.button("Volver a localizar", key="refresh_device_location", on_click=refresh_device_location)
             return
         if evaluation:
+            st.button("Volver a localizar" if error else "Actualizar ubicación", key="refresh_device_location", on_click=refresh_device_location)
             empty_state("Los aciertos, en tus lugares", "Elige un lugar guardado para ver su evaluación. La ubicación actual se consulta sin añadirla a tu historial.")
             return
         with st.spinner("Consultando el tiempo de tu ubicación…"):
@@ -467,6 +474,7 @@ def render_forecast_dashboard(evaluation=False):
             st.caption("Fuentes temporalmente sin datos: " + ", ".join(CHART_LABELS[key] for key in errors) + ". Se reintentarán automáticamente.")
         if frame.empty:
             st.info("Ahora no hemos podido obtener una previsión para tu ubicación. Puedes elegir un lugar guardado o volver a actualizar en unos minutos.")
+            st.button("Volver a localizar", key="refresh_device_location", on_click=refresh_device_location)
         else:
             forecast_view(store, location, frame)
         return

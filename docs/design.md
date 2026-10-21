@@ -98,3 +98,17 @@ siempre se identifica como previsión de la próxima hora disponible.
 
 WeatherNext y el consenso privado conservan el control de acceso existente. La
 gestión pública de estaciones y umbrales mantiene la autorización del propietario.
+
+Rediseño de portada · 21/10/2026: referencias de jerarquía de
+[Apple Weather](https://support.apple.com/en-euro/guide/iphone/iph1ac0b35f/26/ios/26) y
+composición de [widgets de Pixel Weather](https://9to5google.com/2025/08/22/pixel-weather-native-widgets/).
+La cabecera reúne lugar, nota de ubicación temporal y un control circular de
+actualización de 44 × 44 px solo para la ubicación del dispositivo. Es un botón
+nativo con nombre accesible, foco visible y el mismo callback de localización.
+Los estados sin ubicación o sin previsión conservan el botón de reintento.
+Temperatura y sensación ocupan la columna izquierda; ilustración y estado del
+cielo, la derecha. Una franja inferior reparte los rangos de temperatura y
+sensación de las próximas 24 h en dos columnas, sin cajas adicionales.
+Se conservan fuente, identificación de próxima hora, P10–P90 cuando existe,
+hora de actualización, aviso de datos antiguos y nota de estimación a la sombra.
+El fondo mantiene contraste en ambos modos; la ilustración sigue siendo SVG local.

@@ -34,6 +34,7 @@ def icon(name, size=22):
         "arrow": '<path d="M4 12h15m-6-6 6 6-6 6"/>',
         "sun": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/>',
         "settings": '<circle cx="12" cy="12" r="3"/><path d="m9 3-1 3-3 1-2 3 2 2-1 4 3 2 3-1 3 3 3-2v-3l4-2-1-4-3-1-1-4Z"/>',
+        "refresh": '<path d="M20 8a8 8 0 0 0-14-2L3 9m0-6v6h6M4 16a8 8 0 0 0 14 2l3-3m0 6v-6h-6"/>',
     }
     return f'<svg xmlns="http://www.w3.org/2000/svg" class="line-icon" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{paths.get(name, paths["chart"])}</svg>'
 
@@ -93,6 +94,8 @@ def apply_design():
         css += f'.element-container:has(.nav-anchor)+.element-container [data-baseweb="radio"]:nth-child({index})::before {{ mask-image:url("data:image/svg+xml;base64,{encoded}"); }}'
     settings_icon = base64.b64encode(icon("settings").encode()).decode()
     css += f'[data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) button::before {{mask-image:url("data:image/svg+xml;base64,{settings_icon}");}}'
+    refresh_icon = base64.b64encode(icon("refresh").encode()).decode()
+    css += f'.element-container:has(.hero-can-refresh)+.element-container button::before {{mask-image:url("data:image/svg+xml;base64,{refresh_icon}");}}'
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 
@@ -121,17 +124,21 @@ def section(title, subtitle="", symbol="chart"):
     st.markdown(f'<div class="section-heading"><span class="section-icon">{icon(symbol)}</span><div><h2>{text(title)}</h2>{f"<p>{text(subtitle)}</p>" if subtitle else ""}</div></div>', unsafe_allow_html=True)
 
 
-def hero_html(location, first, main, provider_label, updated, stale=False):
+def hero_html(location, first, main, provider_label, updated, stale=False, refreshable=False):
     kind, condition = weather_kind(first, location.timezone)
     local = first.valid_time.tz_convert(location.timezone)
     near = main[main.valid_time < first.valid_time + pd.Timedelta(hours=24)]
     minimum, maximum = near.temperature.min(), near.temperature.max()
+    feels = near.get("feels_like", pd.Series(dtype=float))
+    location_note = '<small>Ubicación aproximada · Solo durante esta visita</small>' if refreshable else ""
     interval = ""
     if pd.notna(first.temperature_p10) and pd.notna(first.temperature_p90):
         interval = f'<span class="hero-range">P10–P90 {value(first.temperature_p10,"°",1)} – {value(first.temperature_p90,"°",1)}</span>'
-    return f'''<section class="weather-hero sky-{kind}" aria-label="Previsión de {text(location.display_name)}">
-<div class="hero-top"><span>{icon("pin",16)} {text(location.display_name)}</span><span class="source-chip">{text(provider_label)}</span></div>
-<div class="hero-main"><div><p class="hero-eyebrow">PRÓXIMA HORA · {text(WEEKDAYS[local.weekday()])} {local:%H:%M}</p><div class="hero-value">{value(first.temperature,"°")}<small>C</small></div><p class="hero-feels">Sensación <strong>{value(first.get("feels_like"),"°")}</strong><small>Estimada a la sombra</small></p><h1>{text(condition)}</h1>{interval}<p class="hero-extremes">Próximas 24 h <strong>↑ {value(maximum,"°")} &nbsp; ↓ {value(minimum,"°")}</strong><small>Sensación ↑ {value(near.get("feels_like", pd.Series(dtype=float)).max(),"°")} · ↓ {value(near.get("feels_like", pd.Series(dtype=float)).min(),"°")}</small></p></div><div class="hero-art">{weather_svg(kind,220)}</div></div>
+    return f'''<section class="weather-hero sky-{kind}{" hero-can-refresh" if refreshable else ""}" aria-label="Previsión de {text(location.display_name)}">
+<div class="hero-top"><div class="hero-location"><span>{icon("pin",16)} {text(location.display_name)}</span>{location_note}</div></div>
+<div class="hero-context"><p class="hero-eyebrow">PRÓXIMA HORA · {text(WEEKDAYS[local.weekday()])} {local:%H:%M}</p><span class="source-chip">{text(provider_label)}</span></div>
+<div class="hero-main"><div class="hero-temperature"><div class="hero-value">{value(first.temperature,"°")}<small>C</small></div><p class="hero-feels">Sensación <strong>{value(first.get("feels_like"),"°")}</strong><small>Estimada a la sombra</small></p></div><div class="hero-condition"><div class="hero-art">{weather_svg(kind,160)}</div><h1>{text(condition)}</h1></div></div>{interval}
+<div class="hero-outlook"><p>Próximas 24 h</p><dl class="hero-extremes"><div><dt>Temperatura</dt><dd><span aria-label="Máxima">↑ {value(maximum,"°")}</span><span aria-label="Mínima">↓ {value(minimum,"°")}</span></dd></div><div><dt>Sensación <small>a la sombra</small></dt><dd><span aria-label="Sensación máxima">↑ {value(feels.max(),"°")}</span><span aria-label="Sensación mínima">↓ {value(feels.min(),"°")}</span></dd></div></dl></div>
 <div class="hero-bottom"><span class="freshness {"stale" if stale else ""}"><i></i>{"Datos antiguos" if stale else "Actualizado"} {updated:%H:%M} · {updated:%d/%m}</span><span>Hora local · {text(location.timezone)}</span></div></section>'''
 
 

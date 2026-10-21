@@ -7,11 +7,45 @@ from unittest.mock import patch
 
 from streamlit.testing.v1 import AppTest
 
-from climate_app.forecast.domain import Forecast, utcnow
+from climate_app.forecast.automatic import AUTOMATIC
+from climate_app.forecast.domain import Forecast, Location, utcnow
 from climate_app.forecast.store import Store
 
 
 class AppTests(unittest.TestCase):
+    def test_hero_refresh_relocates_and_recovery_survives_without_a_forecast(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "forecasts.sqlite3"
+            store = Store(path)
+            store.seed()
+            saved = store.locations()[0]
+            now = utcnow()
+            store.save_forecast(saved.id, Forecast("ecmwf", now, [
+                dict(valid_time=now + timedelta(hours=h), temperature=18, humidity=60, wind_speed=15)
+                for h in (1, 2)]))
+            frame = store.forecasts(saved.id, since=now)
+            with patch.dict(os.environ, {"CLIMATE_FORECAST_DB": str(path)}), \
+                 patch("climate_app.ui.forecast_dashboard.automatic_forecasts", return_value=(frame, {})):
+                app = AppTest.from_file(str(Path(__file__).parents[1] / "app.py"))
+                app.session_state["selected_forecast_location"] = AUTOMATIC
+                app.session_state["device_location"] = Location("auto:test", "Ubicación actual", 40, -3)
+                app.run(timeout=30)
+                self.assertFalse(app.exception)
+                self.assertTrue(any('hero-can-refresh' in m.value and 'Solo durante esta visita' in m.value
+                                    for m in app.markdown if '<section class="weather-hero' in m.value))
+                app.button(key="refresh_device_location").click().run(timeout=30)
+                self.assertEqual(app.session_state["device_location_request"], 1)
+                app.radio(key="forecast_location").set_value(saved.id).run(timeout=30)
+                self.assertFalse(any(b.key == "refresh_device_location" for b in app.button))
+                del app.session_state["device_location"]
+                app.session_state["device_location_error"] = "Permiso denegado"
+                app.radio(key="forecast_location").set_value(AUTOMATIC).run(timeout=30)
+                self.assertEqual(app.button(key="refresh_device_location").label, "Volver a localizar")
+                app.button(key="refresh_device_location").click().run(timeout=30)
+                self.assertEqual(app.session_state["device_location_request"], 2)
+                self.assertNotIn("device_location_error", app.session_state)
+                self.assertFalse(app.exception)
+
     def test_duplicate_places_alias_and_undo_preserve_the_selected_archive(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "forecasts.sqlite3"
