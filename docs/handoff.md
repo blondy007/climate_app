@@ -2,6 +2,30 @@
 
 ## Estado útil
 
+- Trabajo actual preparado en `codex/manual-weather-refresh`: icono Actualizar
+  previsión en el widget de lugares guardados, consulta real de fuentes abiertas,
+  consenso público con método existente y límite compartido de quince minutos.
+  Fallos conservan el archivo y se respeta la cuota diaria y Expires de MET Norway.
+  Sin cambios de investigación ni activación de WeatherNext. Suite completa de
+  83 Python correcta; después se corrigió un None transitorio del selector al cambiar
+  las opciones y se verificaron 19 pruebas focalizadas + 16 Node correctas.
+  Tras el bloqueo de Windows se repitió la verificación focalizada y se completó
+  la revisión móvil local a 390 px: clic cambia la previsión ficticia de 18 a 21 °C,
+  muestra confirmación y desactiva el icono durante el plazo compartido.
+  Captura: `test-results/manual-refresh-mobile.png`.
+- Coolify: Iván autorizó añadir únicamente `10.0.2.1/32` a las IP permitidas de
+  la API. Aplicado y confirmado por SSH: `100.64.0.0/10,10.0.2.1/32`, API habilitada.
+  Logs de Nginx muestran la pasarela Docker `10.0.2.1` como cliente de peticiones
+  llegadas por Tailscale. El helper real admite la pasarela y rechaza `203.0.113.50`.
+  Falta validar un disparador real de Actions tras desplegar la nueva versión.
+  No se han rotado tokens ni cambiado puertos o exposición. Rollback: retirar solo
+  `10.0.2.1/32` de Settings → Advanced → Allowed IPs for API Access.
+- La nueva versión aún NO se ha publicado ni desplegado; incluye la corrección
+  `ac1232e` y refuerza el watchdog para montajes tardíos (máximo tres recuperaciones
+  por iframe, sin reemplazar documentos activos). Se necesita petición explícita de
+  despliegue conforme a AGENTS antes de push a producción.
+- Siguiente orientación de producto, sin iniciar migración: separar front y back
+  para web de escritorio y móvil, Android muy probable e iPhone posible.
 - Publicado `a876f18bd8cc516f762c1bf7d063ca6a13ab31e7` con petición explícita de Iván.
   Rama de trabajo: `codex/location-memory-and-deletion`. El navegador recuerda
   el lugar guardado elegido; la ubicación automática muestra el nombre resuelto
@@ -13,26 +37,20 @@
   producción. CI correcto, API 403 y fallback manual de Coolify; imagen exacta
   running/healthy, HTTPS/health 200, binding/volumen conservados, logs limpios y Kuma 5
   Funcional. La UI pública muestra Borrar definitivamente para el duplicado quitado.
-- Pendiente: `ac1232e` corrige el aviso de valor por defecto duplicado de Streamlit
-  al restaurar la ubicación. 13 pruebas focalizadas correctas. Auto-review rechazó su
-  push a producción por exigir autorización explícita nueva; pregunta enviada a Iván.
-  No publicar sin esa respuesta. Se observó también un aviso de carga del componente
+- `ac1232e`, incluido en el trabajo actual, corrige el aviso de valor por defecto
+  duplicado de Streamlit al restaurar la ubicación. Su push aislado fue rechazado por
+  auto-review por exigir autorización nueva. Se observó también un aviso del componente
   en una pestaña pública de Brave: reaparece tras esperar incluso con tema explícito,
   aunque el HTML del componente responde 200. Pendiente de acotar; no darlo por resuelto.
   El registro de infraestructura `ee02d5e` se publicó en `master` con autorización
   expresa de Iván tras el bloqueo inicial de auto-review.
-- Consulta posterior: el 403 exacto corresponde a `ApiAllowed` de Coolify 4.1.2,
-  filtro de IP permitidas (código oficial); falta identificar la IP que ve Coolify.
-  No se han cambiado permisos, tokens ni configuración. Los lugares guardados no
-  tienen actualización meteorológica manual: Actualizar vista solo relee SQLite;
-  recopilación cada tres horas. Iván preguntó por ello, sin petición de implementación aún.
 - Producción anterior verificada: `0ce4b74d9ae44a4ebdcb7db465fe2917ff1055b5`.
   Corrección de Ajustes aprobada y despliegue solicitado por Iván el 21/10; publicado mediante
   el fallback manual de Coolify. CI: 71 pruebas Python + 12 Node correctas.
 - Histórico: tabla corregida en claro/oscuro; comprobación pública a 320/390 px,
   sin scroll horizontal de página. Cabecera y selección de lugares también resueltas.
-- Servidor healthy, HTTPS 200, Kuma Funcional. El trigger automático de Coolify
-  devuelve 403; el despliegue manual sí funciona. No investigar ese fallo salvo petición.
+- Servidor healthy, HTTPS 200, Kuma Funcional en la última aceptación publicada.
+  El fallback manual funciona; el filtro que provocaba 403 se corrigió como se indica arriba.
 - Rediseño del widget publicado desde `codex/current-weather-redesign`.
   Temperatura/sensación a la izquierda,
   ilustración/condición a la derecha y rangos en una franja inferior. Actualizar

@@ -39,6 +39,31 @@ def run_task(store, key, action, interval):
         return False
 
 
+def rebuild_consensus(store, location, include_private=True):
+    as_of = utcnow()
+    archive = store.forecasts(location.id, latest=False)
+    if not include_private:
+        archive = archive[archive.provider != "weathernext3"]
+    observations = store.observations(location.id)
+    training = scores(archive, observations, as_of=as_of)
+    current = store.forecasts(location.id, since=as_of)
+    variants = [("climateapp", current[current.provider != "weathernext3"])]
+    if include_private and (current.provider == "weathernext3").any():
+        variants.insert(0, ("climateapp_private", current))
+    for consensus_provider, inputs in variants:
+        merged = combine(inputs, training, as_of=as_of)
+        if not merged.empty:
+            weights = {}
+            from climate_app.forecast.domain import horizon
+            for row in merged.to_dict("records"):
+                bucket = horizon((row["valid_time"] - as_of).total_seconds() / 3600)
+                weights.setdefault(bucket, row["weights"])
+            store.save_forecast(location.id, Forecast(consensus_provider, as_of, merged.to_dict("records"),
+                metadata={"policy": "inverse MAE + regularization; equal cold start; 30 samples/3 days",
+                          "weights": weights, "trained": bool(merged.trained.any()),
+                          "training_cutoff": stamp(as_of), "precipitation_interval": "preceding_hour"}))
+
+
 def collect_cycle(store: Store, include_climate=True):
     store.seed()
     now = utcnow()
@@ -69,26 +94,7 @@ def collect_cycle(store: Store, include_climate=True):
         if location_changed:
             changed.append(location)
     for location in changed:
-        as_of = utcnow()
-        archive = store.forecasts(location.id, latest=False)
-        observations = store.observations(location.id)
-        training = scores(archive, observations, as_of=as_of)
-        current = store.forecasts(location.id, since=as_of)
-        variants = [("climateapp", current[current.provider != "weathernext3"])]
-        if (current.provider == "weathernext3").any():
-            variants.insert(0, ("climateapp_private", current))
-        for consensus_provider, inputs in variants:
-            merged = combine(inputs, training, as_of=as_of)
-            if not merged.empty:
-                weights = {}
-                from climate_app.forecast.domain import horizon
-                for row in merged.to_dict("records"):
-                    bucket = horizon((row["valid_time"] - as_of).total_seconds() / 3600)
-                    weights.setdefault(bucket, row["weights"])
-                store.save_forecast(location.id, Forecast(consensus_provider, as_of, merged.to_dict("records"),
-                    metadata={"policy": "inverse MAE + regularization; equal cold start; 30 samples/3 days",
-                              "weights": weights, "trained": bool(merged.trained.any()),
-                              "training_cutoff": stamp(as_of), "precipitation_interval": "preceding_hour"}))
+        rebuild_consensus(store, location)
     for location in store.locations():
         key = f"{location.id}:observations"
         if due(store, key, now):

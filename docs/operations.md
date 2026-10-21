@@ -120,6 +120,18 @@ propietario. Se pueden mantener hasta diez lugares activos dentro de las cuotas.
   La búsqueda de lugares tiene caché y comparte el presupuesto. No hay paso
   automático a planes de pago.
 
+Actualizar previsión permite una consulta manual de un lugar guardado cada quince
+minutos. El límite se reclama en una transacción SQLite mediante
+`task:{id}:manual-refresh`, compartido por pestañas, usuarios y procesos, también
+ante fallos. Consulta solo ECMWF, ICON, GFS y MET Norway, en paralelo; las llamadas
+de Open-Meteo mantienen la reserva preventiva diaria de 8.000 unidades. La caché
+interna de Open-Meteo se revalida, mientras MET Norway conserva su plazo HTTP
+Expires (o la caducidad previa si el registro no contiene ese encabezado).
+Una fuente servida desde caché no crea un snapshot nuevo. Los fallos conservan
+el archivo; las fuentes actualizadas reconstruyen únicamente el consenso público
+con el método existente. No consulta Google ni observaciones/climatología, no
+modifica el heartbeat del recolector y mantiene el snapshot periódico existente.
+
 Se respeta la [licencia gratuita no comercial de Open-Meteo](https://open-meteo.com/en/terms).
 MET Norway recibe identificación User-Agent con el repositorio; se respetan sus
 cabeceras de caché y atribución. Unidades: °C, km/h y mm. Almacenamiento temporal en UTC.

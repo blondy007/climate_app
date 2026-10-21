@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 from climate_app.data.paths import DATA_DIR
-from climate_app.forecast.domain import Forecast, Location, finite, stamp, utcnow
+from climate_app.forecast.domain import Forecast, Location, finite, instant, stamp, utcnow
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS locations (
@@ -259,6 +259,23 @@ class Store:
                 return False
             conn.execute("INSERT OR REPLACE INTO budget VALUES (?,?,?)", (service, period, used + amount))
         return True
+
+    def claim_manual_refresh(self, location_id, now=None):
+        """Share a 15-minute manual-refresh limit across tabs, users and processes."""
+        now = now or utcnow()
+        key = f"task:{location_id}:manual-refresh"
+        with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            if not conn.execute("SELECT 1 FROM locations WHERE id=? AND active=1", (location_id,)).fetchone():
+                raise ValueError("El lugar ya no está activo")
+            row = conn.execute("SELECT value FROM state WHERE key=?", (key,)).fetchone()
+            previous = json.loads(row[0]) if row else {}
+            if previous.get("retry_at") and instant(previous["retry_at"]) > now:
+                return instant(previous["retry_at"])
+            retry_at = now + timedelta(minutes=15)
+            conn.execute("INSERT OR REPLACE INTO state VALUES (?,?,?)",
+                         (key, json.dumps({"retry_at": stamp(retry_at)}), stamp(now)))
+        return None
 
     def backup(self, destination=None):
         target = Path(destination or self.path.with_name("forecasts-backup.sqlite3"))

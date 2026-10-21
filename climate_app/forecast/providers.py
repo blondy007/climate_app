@@ -48,6 +48,7 @@ def get_json(url, params, store: Store, cache_key: str, min_ttl=3600):
             except (ValueError, TypeError):
                 pass
         store.set_state("http:" + cache_key, {"data": data, "expires": stamp(expires),
+                        "provider_expires": response.headers.get("Expires"),
                         "last_modified": response.headers.get("Last-Modified")})
         return data
     except requests.RequestException:

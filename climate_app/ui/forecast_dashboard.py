@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import timedelta
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -14,6 +15,7 @@ from climate_app.forecast.automatic import AUTOMATIC, automatic_forecasts
 from climate_app.forecast.access import private_view, visible_forecasts
 from climate_app.forecast.domain import HORIZONS, LABELS, instant, utcnow
 from climate_app.forecast.providers import geocode
+from climate_app.forecast.refresh import refresh_saved_forecast
 from climate_app.forecast.store import Store
 from climate_app.forecast.thermal import METHOD, SOURCE, with_feels_like
 from climate_app.auth import authenticated, owner_login
@@ -237,6 +239,39 @@ def refresh_device_location():
     st.session_state.pop("device_location_error", None)
 
 
+def saved_refresh_button(store, location):
+    limit = store.state(f"task:{location.id}:manual-refresh", {}).get("retry_at")
+    waiting = bool(limit and instant(limit) > utcnow())
+    help_text = (f"Podrás volver a consultar a las {instant(limit).astimezone(ZoneInfo(location.timezone)):%H:%M}."
+                 if waiting else "Consultar ahora las fuentes abiertas de este lugar. Máximo una vez cada 15 minutos.")
+    if st.button("Actualizar previsión", key="refresh_saved_forecast", disabled=waiting, help=help_text):
+        try:
+            with st.spinner("Actualizando la previsión…"):
+                result = refresh_saved_forecast(store, location.id)
+            if result.retry_at:
+                message, status = "Ya se ha solicitado una actualización reciente. Espera unos minutos.", "info"
+            elif result.updated:
+                message, status = "Previsión consultada. Las fuentes pueden conservar la misma previsión.", "success"
+            elif result.cached and not result.errors:
+                message, status = "Las fuentes mantienen vigente la última previsión.", "info"
+            else:
+                message, status = "No hemos podido actualizar ahora. Conservamos la última previsión disponible.", "warning"
+            if result.errors:
+                message += " Fuentes sin actualizar: " + ", ".join(CHART_LABELS[p] for p in result.errors) + "."
+                if any("Cuota preventiva" in error for error in result.errors.values()):
+                    message += " Se ha alcanzado el límite preventivo diario de consultas gratuitas."
+            st.session_state["manual_refresh_notice"] = (location.id, status, message)
+            st.rerun()
+        except ValueError as exc:
+            st.warning(str(exc))
+
+
+def refresh_notice(location):
+    notice = st.session_state.get("manual_refresh_notice")
+    if notice and notice[0] == location.id:
+        getattr(st, notice[1])(notice[2])
+
+
 def forecast_view(store, location, frame):
     frame = with_feels_like(frame)
     hero = st.empty()
@@ -253,15 +288,21 @@ def forecast_view(store, location, frame):
         st.info("Esta fuente no cubre el horizonte elegido. Prueba otro modelo o un plazo más corto.")
         if location.id.startswith("auto:"):
             st.button("Volver a localizar", key="refresh_device_location", on_click=refresh_device_location)
+        else:
+            saved_refresh_button(store, location)
+            refresh_notice(location)
         return
     first = main.iloc[0]
     updated = main.fetched_at.max().tz_convert(location.timezone)
     stale = now - main.fetched_at.max() > pd.Timedelta(hours=9)
     refreshable = location.id.startswith("auto:")
     with hero.container():
-        st.markdown(hero_html(location, first, main, CHART_LABELS[provider], updated, stale, refreshable), unsafe_allow_html=True)
+        st.markdown(hero_html(location, first, main, CHART_LABELS[provider], updated, stale, True), unsafe_allow_html=True)
         if refreshable:
             st.button("Actualizar ubicación", key="refresh_device_location", on_click=refresh_device_location)
+        else:
+            saved_refresh_button(store, location)
+    refresh_notice(location)
     if stale:
         st.warning("Esta previsión tiene más de 9 horas. Consulta el estado de las fuentes en Ajustes.")
     daily = daily_summary(main, location.timezone)
@@ -473,8 +514,9 @@ def render_forecast_dashboard(evaluation=False):
     def choose_location():
         st.session_state["selected_forecast_location"] = st.session_state["forecast_location"]
         st.session_state["browser_forecast_preferences_loaded"] = True
-    if st.session_state.get("forecast_location") not in choices:
-        st.session_state["forecast_location"] = selected
+    # Options change when a place is added/removed. Reassign the canonical value
+    # before registration so a newly identified radio never falls back to None.
+    st.session_state["forecast_location"] = selected
     location_id = picker.radio("Lugar", choices, index=None,
                                format_func=labels.get, key="forecast_location", label_visibility="collapsed",
                                horizontal=True, on_change=choose_location)
@@ -515,6 +557,8 @@ def render_forecast_dashboard(evaluation=False):
         frame = visible_forecasts(store.forecasts(location.id, since=utcnow()))
         if frame.empty:
             empty_state("Estamos mirando al cielo", "La primera previsión se está preparando. Las fuentes se actualizan automáticamente, también cuando no tienes la app abierta.")
+            saved_refresh_button(store, location)
+            refresh_notice(location)
         else:
             forecast_view(store, location, frame)
     if st.button("Actualizar vista", help="Lee las descargas del recolector sin aumentar las consultas a los proveedores"):

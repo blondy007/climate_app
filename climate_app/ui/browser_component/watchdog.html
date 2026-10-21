@@ -3,6 +3,7 @@
   const root = window.parent;
   if (root.climateAppBridgeWatchdog) return;
   root.climateAppBridgeWatchdog = true;
+  const attempts = new WeakMap();
   const check = async () => {
     const frame = root.document.querySelector('iframe[title*="climateapp_browser_"]');
     if (!frame) return;
@@ -13,12 +14,20 @@
       // Inline the same first-party asset only for that failed navigation.
       // An active permission/login document is never replaced.
       if (frame.contentDocument?.URL !== "about:blank") return;
+      if ((attempts.get(frame) || 0) >= 3) return;
+      attempts.set(frame, (attempts.get(frame) || 0) + 1);
       const response = await root.fetch(url.href, {credentials: "same-origin", cache: "no-store", redirect: "error"});
       if (!response.ok || !response.headers.get("Content-Type")?.startsWith("text/html")) return;
       const source = await response.text();
       if (frame.isConnected && frame.contentDocument?.URL === "about:blank") frame.srcdoc = source;
     } catch (_) { /* Normal cross-origin frame protections stay in place. */ }
   };
-  setTimeout(check, 3000);
+  // A Streamlit rerun can mount a new empty iframe after the first check.
+  // Observe later mounts too, with at most three recovery requests per iframe.
+  const poll = async () => {
+    await check();
+    setTimeout(poll, 3000);
+  };
+  setTimeout(poll, 3000);
 })();
 </script>

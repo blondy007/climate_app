@@ -132,3 +132,10 @@ En Lugares quitados se puede recuperar o borrar definitivamente un lugar. El
 borrado muestra nombre y coordenadas para distinguir duplicados y requiere sesión
 personal y una segunda confirmación. Elimina el archivo del lugar elegido; quitar
 un lugar continúa siendo reversible. Los controles conservan ancho legible en móvil.
+
+Los lugares guardados tienen un icono circular «Actualizar previsión» dentro de la
+cabecera del widget. Consulta las fuentes abiertas de ese lugar y vuelve a calcular
+el consenso público, con aviso de resultado y conservación de datos ante fallos.
+El control se desactiva durante quince minutos compartidos por ubicación y su ayuda
+indica cuándo se puede repetir. También está disponible cuando aún no hay previsión.
+Ubicación actual conserva su control específico para volver a localizar el dispositivo.

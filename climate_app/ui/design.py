@@ -130,7 +130,7 @@ def hero_html(location, first, main, provider_label, updated, stale=False, refre
     near = main[main.valid_time < first.valid_time + pd.Timedelta(hours=24)]
     minimum, maximum = near.temperature.min(), near.temperature.max()
     feels = near.get("feels_like", pd.Series(dtype=float))
-    location_note = '<small>Ubicación aproximada · Solo durante esta visita</small>' if refreshable else ""
+    location_note = '<small>Ubicación aproximada · Solo durante esta visita</small>' if location.id.startswith("auto:") else ""
     interval = ""
     if pd.notna(first.temperature_p10) and pd.notna(first.temperature_p90):
         interval = f'<span class="hero-range">P10–P90 {value(first.temperature_p10,"°",1)} – {value(first.temperature_p90,"°",1)}</span>'
