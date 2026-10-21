@@ -88,6 +88,14 @@ class BrowserSessions:
                                             "AND owner_fingerprint=? AND expires_at>?",
                                             (session_hash, owner, stamp(now or utcnow()))).fetchone())
 
+    def identify(self, cookie, owner, now=None):
+        """Restore directly from the HttpOnly cookie on the trusted web connection."""
+        with self.store.connect() as connection:
+            row = connection.execute("SELECT token_hash,expires_at FROM owner_browser_tokens WHERE token_hash=? "
+                                     "AND kind='session' AND owner_fingerprint=? AND expires_at>?",
+                                     (token_hash(cookie), owner, stamp(now or utcnow()))).fetchone()
+            return {"session_hash": row["token_hash"], "expires_at": row["expires_at"]} if row else None
+
     def revoke(self, session_hash):
         with self.store.connect() as connection:
             connection.execute("DELETE FROM owner_browser_tokens WHERE token_hash=? OR session_hash=?",

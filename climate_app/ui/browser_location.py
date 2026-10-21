@@ -4,6 +4,7 @@ import hashlib
 
 import streamlit as st
 from streamlit.components.v1 import declare_component
+from streamlit.components.v1 import html
 
 from climate_app.forecast.automatic import AUTOMATIC, device_location
 from climate_app.forecast.domain import stamp, utcnow
@@ -19,6 +20,8 @@ def _bridge(**kwargs):
 
 
 def sync_browser_location():
+    from climate_app.auth import restore_owner_session
+    restore_owner_session()
     state = st.session_state
     event = _bridge(automatic=state.get("selected_forecast_location") == AUTOMATIC,
                     weather_view=state.get("main_view", "🌤️ Previsión") in ("🌤️ Previsión", "🎯 Aciertos"),
@@ -26,6 +29,7 @@ def sync_browser_location():
                     restore=not state.get("browser_forecast_preferences_loaded", False),
                     auth_action=state.get("owner_cookie_action"),
                     request=state.get("device_location_request", 0), default=None, key="browser_location_bridge")
+    html((_component_path / "watchdog.html").read_text(encoding="utf-8"), height=0)
     events = event.get("events", []) if isinstance(event, dict) and "events" in event else [event]
     if not isinstance(events, list):
         return
