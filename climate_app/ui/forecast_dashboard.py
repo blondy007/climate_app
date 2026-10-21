@@ -623,12 +623,14 @@ def render_settings():
     store.seed()
     st.markdown('<div class="page-intro"><h1>A tu manera.</h1><p>Tus lugares, tu acceso personal y las fuentes que hacen posible tu previsión.</p></div>', unsafe_allow_html=True)
     with st.container():
-        st.markdown('<span class="settings-preferences-anchor"></span>', unsafe_allow_html=True)
-        appearance, forecast = st.columns(2, gap="large")
-        with appearance:
+        # Keep mobile and keyboard reading order while desktop panels flow independently.
+        st.markdown('<span class="settings-layout-anchor"></span>', unsafe_allow_html=True)
+        with st.container():
+            st.markdown('<span class="settings-appearance-anchor"></span>', unsafe_allow_html=True)
             section("Apariencia", "Un aspecto cómodo a cualquier hora.", "sun")
             appearance_controls()
-        with forecast:
+        with st.container():
+            st.markdown('<span class="settings-forecast-anchor"></span>', unsafe_allow_html=True)
             section("Tu previsión", "Elige una vez cómo quieres consultar el tiempo.", "layers")
             options = ["auto", "ecmwf", "icon", "gfs", "metno"]
             if private_view():
@@ -642,14 +644,12 @@ def render_settings():
             st.radio("Modelo principal", options, format_func=PREFERENCES.get,
                      key="forecast_model_preference", index=options.index(selected), on_change=remember_model)
             st.caption("Recomendado: el consenso combina las fuentes disponibles. Tu elección se recuerda en este navegador; la portada siempre indica qué fuente estás viendo.")
-    st.markdown('<span id="places-section"></span>', unsafe_allow_html=True)
-    with st.container():
-        st.markdown('<span class="settings-details-anchor"></span>', unsafe_allow_html=True)
-        places, account = st.columns(2, gap="large")
-        with places:
-            section("Tus lugares", "Añade, quita o recupera tus sitios favoritos.", "pin")
+        with st.container():
+            st.markdown('<span class="settings-places-anchor settings-details-anchor"></span>', unsafe_allow_html=True)
+            section("Tus lugares", "Añade, quita o recupera tus sitios favoritos.", "pin", anchor="places-section")
             location_controls(store)
-        with account:
+        with st.container():
+            st.markdown('<span class="settings-account-anchor settings-details-anchor"></span>', unsafe_allow_html=True)
             section("Tu cuenta", "Acceso personal a WeatherNext y al consenso completo.", "layers")
             owner_login(store)
             locations = store.locations()

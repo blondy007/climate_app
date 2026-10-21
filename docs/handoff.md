@@ -2,6 +2,13 @@
 
 ## Estado útil
 
+- Corrección lista para desplegar por petición de Iván: `codex/settings-independent-columns`.
+  Ajustes usa columnas con alturas independientes en escritorio: lugares sigue a
+  apariencia sin esperar a previsión; cuenta sigue a previsión. Se mantiene el orden
+  móvil/DOM y el ancla visible de Tus lugares. Verificado a 390/900/901/1280 px,
+  sin desbordamiento, con formularios abiertos y claro/oscuro. Dos AppTests de alias,
+  selección, recuperación y acceso personal correctos. Capturas locales:
+  `test-results/settings-independent-columns-desktop.png` y `settings-independent-columns-mobile.png`.
 - Producción actual: `11cf633a1a3c8bf9f38c232ca1da32e3789874a5`, publicada por petición
   de Iván desde `codex/compact-place-controls`. Actions 39653861713: 84 Python + 16 Node
   correctas y disparador API correcto. Imagen exacta running/healthy, HTTPS/health 200,

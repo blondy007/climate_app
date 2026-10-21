@@ -113,8 +113,12 @@ Se conservan fuente, identificación de próxima hora, P10–P90 cuando existe,
 hora de actualización, aviso de datos antiguos y nota de estimación a la sombra.
 El fondo mantiene contraste en ambos modos; la ilustración sigue siendo SVG local.
 
-Ajustes en escritorio usa dos columnas alineadas: apariencia/previsión y
-lugares/cuenta y fuentes. Por debajo de 900 px se apilan en orden de lectura.
+Ajustes en escritorio usa dos columnas independientes: apariencia y lugares a la
+izquierda, previsión y cuenta/fuentes a la derecha. Cada sección empieza al terminar
+la anterior de su lado, sin reservar el alto de la columna opuesta. Por debajo de
+901 px se apilan en el mismo orden del documento: apariencia, previsión, lugares y
+cuenta/fuentes. Las secciones mantienen su altura natural al abrir formularios y
+el salto a Tus lugares apunta a su cabecera visible.
 El modelo principal ocupa una cuadrícula de opciones de ancho uniforme; las filas
 de lugares tienen un solo separador y botones de ancho acotado. Sus reglas CSS
 se limitan a contenedores con marcadores propios para no añadir bordes o relleno

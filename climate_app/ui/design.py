@@ -127,8 +127,9 @@ def brand():
     st.markdown(f'<div class="app-brand"><div class="brand-name">{weather_svg("partly",40)}<span>climate<span class="brand-light">app</span><b class="brand-dot">.</b></span></div><span class="brand-tagline">Tu clima, con perspectiva.</span></div>', unsafe_allow_html=True)
 
 
-def section(title, subtitle="", symbol="chart"):
-    st.markdown(f'<div class="section-heading"><span class="section-icon">{icon(symbol)}</span><div><h2>{text(title)}</h2>{f"<p>{text(subtitle)}</p>" if subtitle else ""}</div></div>', unsafe_allow_html=True)
+def section(title, subtitle="", symbol="chart", *, anchor=None):
+    target = f' id="{text(anchor)}"' if anchor else ""
+    st.markdown(f'<div class="section-heading"{target}><span class="section-icon">{icon(symbol)}</span><div><h2>{text(title)}</h2>{f"<p>{text(subtitle)}</p>" if subtitle else ""}</div></div>', unsafe_allow_html=True)
 
 
 def hero_html(location, first, main, provider_label, updated, stale=False, refreshable=False):
