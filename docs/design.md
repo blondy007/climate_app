@@ -21,7 +21,7 @@ recursos remotos de diseño ni suscripciones.
   mientras se acumulan observaciones, sin mostrar métricas ficticias.
 - Histórico: análisis original, con filtros, estaciones, umbrales y carga de CSV
   accesibles desde un panel plegable en la propia página, también en móvil.
-- Ajustes: apariencia, gestión de lugares, cuenta personal, fuentes y licencias.
+- Ajustes: apariencia, modelo principal, gestión de lugares, cuenta personal, fuentes y licencias.
 
 El selector Automático / Claro / Oscuro recuerda la elección por navegador.
 El modo automático sigue el dispositivo; secciones, formularios, navegación y
@@ -29,8 +29,13 @@ gráficos comparten la paleta. La gestión muestra cada lugar con su botón Quit
 y un apartado de lugares quitados permite recuperarlo conservando su archivo.
 El aviso de retirada ofrece Deshacer. Los alias distinguen sitios con nombres
 iguales; mientras no tengan alias, el selector añade coordenadas para diferenciarlos.
-La cabecera mantiene selector y botón de gestión en una fila también en móvil;
-el botón desplaza directamente a Tus lugares.
+La cabecera ofrece lugares en una franja horizontal desplazable, sin desplegable,
+con selección por toque y teclado. Ubicación actual solicita el permiso nativo;
+los errores ofrecen reintentar o elegir un lugar guardado. El botón de gestión
+desplaza directamente a Tus lugares. El modelo principal se elige mediante una
+lista de opciones en Ajustes y se recuerda por navegador; la portada identifica
+siempre la fuente efectiva y avisa si debe utilizar otra disponible.
+Los indicadores se centran, con cuatro columnas en escritorio y dos en móvil.
 
 Las filas diarias son botones accesibles con teclado y área táctil completa.
 El contenedor Markdown de cada fila elimina el margen negativo de Streamlit

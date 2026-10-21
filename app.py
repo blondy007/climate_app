@@ -119,6 +119,8 @@ def render_history() -> None:
 
 def main() -> None:
     apply_design()
+    from climate_app.ui.browser_location import sync_browser_location
+    sync_browser_location()
     brand()
     st.markdown('<span class="nav-anchor"></span>', unsafe_allow_html=True)
     labels = {"🌤️ Previsión": "Tiempo", "🎯 Aciertos": "Aciertos", "📊 Histórico": "Histórico", "⚙️ Ajustes": "Ajustes"}

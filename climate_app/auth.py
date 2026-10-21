@@ -59,17 +59,39 @@ def fingerprint(config):
 def authenticated():
     config = owner_config()
     issued = st.session_state.get("owner_login_time")
-    return bool(config and issued and utcnow() - instant(issued) < timedelta(hours=24)
-                and st.session_state.get("owner_authenticated") == fingerprint(config))
+    valid = bool(config and issued and utcnow() - instant(issued) < timedelta(hours=24)
+                 and st.session_state.get("owner_authenticated") == fingerprint(config))
+    session = st.session_state.get("owner_browser_session")
+    if valid and session:
+        from climate_app.browser_auth import BrowserSessions
+        valid = BrowserSessions().valid(session, fingerprint(config))
+    return valid
+
+
+def clear_owner_session():
+    for key in ("owner_authenticated", "owner_login_time", "owner_browser_session", "owner_browser_expires"):
+        st.session_state.pop(key, None)
 
 
 def owner_login(store):
     with st.expander("Acceso personal · WeatherNext", expanded=False):
         if authenticated():
             st.success("Sesión personal iniciada")
+            if st.session_state.get("owner_browser_expires"):
+                expiry = instant(st.session_state["owner_browser_expires"])
+                st.caption(f"Este navegador recordará tu acceso hasta el {expiry:%d/%m/%Y}, salvo que cierres sesión antes.")
+            if st.session_state.get("owner_cookie_warning"):
+                st.warning(st.session_state["owner_cookie_warning"])
             if st.button("Cerrar sesión"):
-                st.session_state.pop("owner_authenticated", None)
-                st.session_state.pop("owner_login_time", None)
+                from climate_app.browser_auth import BrowserSessions
+                sessions = BrowserSessions(store)
+                sessions.revoke(st.session_state.get("owner_browser_session"))
+                pending = st.session_state.get("owner_cookie_action", {})
+                if pending.get("kind") == "remember":
+                    sessions.cancel_exchange(pending.get("code"))
+                clear_owner_session()
+                st.session_state["owner_logout_pending"] = True
+                st.session_state["owner_cookie_action"] = {"kind": "logout", "nonce": secrets.token_urlsafe(12)}
                 st.rerun()
             return
         st.caption("Inicia sesión para consultar WeatherNext y el consenso completo.")
@@ -83,6 +105,8 @@ def owner_login(store):
         with st.form("owner_login", clear_on_submit=True):
             username = st.text_input("Usuario", max_chars=80, key="owner_username")
             password = st.text_input("Contraseña", type="password", max_chars=256, key="owner_password")
+            remember = st.checkbox("Mantener sesión en este dispositivo", value=True,
+                                   help="Recuerda tu acceso durante 30 días. Puedes revocarlo con Cerrar sesión.")
             submit = st.form_submit_button("Entrar")
         if submit:
             now = utcnow()
@@ -94,6 +118,13 @@ def owner_login(store):
             if hmac.compare_digest(username.encode(), config["username"].encode()) and correct_password:
                 st.session_state["owner_authenticated"] = fingerprint(config)
                 st.session_state["owner_login_time"] = stamp(now)
+                st.session_state["owner_logout_pending"] = False
+                st.session_state.pop("owner_cookie_warning", None)
+                if remember:
+                    from climate_app.browser_auth import BrowserSessions
+                    code = BrowserSessions(store).issue_exchange(fingerprint(config))
+                    st.session_state["owner_cookie_action"] = {"kind": "remember", "code": code,
+                                                              "nonce": secrets.token_urlsafe(12)}
                 st.rerun()
             else:
                 st.error("Usuario o contraseña incorrectos.")

@@ -9,7 +9,7 @@ import time
 
 
 def main():
-    web = subprocess.Popen([sys.executable, "-m", "streamlit", "run", "app.py",
+    web = subprocess.Popen([sys.executable, "-m", "climate_app.web", "run", "app.py",
         "--server.address=0.0.0.0", "--server.port=" + os.environ.get("PORT", "8501"),
         "--server.headless=true", "--browser.gatherUsageStats=false"])
     worker = subprocess.Popen([sys.executable, "-m", "climate_app.forecast.worker"])

@@ -10,6 +10,7 @@ from plotly.subplots import make_subplots
 import streamlit as st
 
 from climate_app.forecast.analysis import climatology, daily_summary, scores
+from climate_app.forecast.automatic import AUTOMATIC, automatic_forecasts
 from climate_app.forecast.access import private_view, visible_forecasts
 from climate_app.forecast.domain import HORIZONS, LABELS, instant, utcnow
 from climate_app.forecast.providers import geocode
@@ -18,6 +19,7 @@ from climate_app.forecast.thermal import METHOD, SOURCE, with_feels_like
 from climate_app.auth import owner_login
 from climate_app.ui.design import section, hero_html, weather_details, hourly_strip, daily_cards, day_label, empty_state, text
 from climate_app.ui.appearance import PALETTES, appearance_controls, palette
+from climate_app.ui.browser_location import PREFERENCES, choose_provider
 
 METRICS = {"temperature": ("Temperatura", "°C"), "feels_like": ("Sensación térmica", "°C"), "humidity": ("Humedad", "%"),
            "precipitation": ("Precipitación", "mm"), "wind_speed": ("Viento", "km/h"),
@@ -73,7 +75,6 @@ def restore_place(store, location):
         removed = st.session_state.pop("removed_place")
         if removed["selected"]:
             st.session_state["selected_forecast_location"] = location.id
-            st.session_state["forecast_location"] = location.id
     st.session_state["place_notice"] = f"{location.display_name} vuelve a estar en tus lugares. Su historial sigue disponible."
     st.session_state["scroll_target"] = "places-section"
 
@@ -142,7 +143,6 @@ def location_controls(store):
                 try:
                     location_id = store.add_location(item["name"], item["latitude"], item["longitude"],
                                                      item.get("timezone", "UTC"))
-                    st.session_state["forecast_location"] = location_id
                     st.session_state["selected_forecast_location"] = location_id
                     st.session_state.pop("forecast_place_results", None)
                     st.rerun()
@@ -160,7 +160,6 @@ def location_controls(store):
             if st.form_submit_button("Guardar coordenadas"):
                 try:
                     location_id = store.add_location(name, lat, lon, timezone)
-                    st.session_state["forecast_location"] = location_id
                     st.session_state["selected_forecast_location"] = location_id
                     st.rerun()
                 except (ValueError, KeyError):
@@ -214,10 +213,10 @@ def forecast_view(store, location, frame):
     hero = st.empty()
     hours = st.radio("Horizonte", [48, 120, 240, 360], horizontal=True,
                      format_func=lambda h: {48: "48 horas", 120: "5 días", 240: "10 días", 360: "15 días"}[h])
-    providers = [p for p in LABELS if p in frame.provider.unique()]
-    with st.expander("Elegir modelo de previsión"):
-        provider = st.selectbox("Previsión principal", providers, format_func=LABELS.get)
-        st.caption("El consenso combina los modelos disponibles. También puedes consultar cada fuente por separado.")
+    preference = st.session_state.get("preferred_forecast_provider", "auto")
+    provider = choose_provider(frame.provider.unique(), preference)
+    if preference != "auto" and provider != preference:
+        st.caption(f"{PREFERENCES.get(preference, 'El modelo elegido')} no está disponible aquí. Mostramos {CHART_LABELS[provider]}. Puedes cambiar la preferencia en Ajustes.")
     now = pd.Timestamp(utcnow())
     frame = frame[(frame.valid_time > now) & (frame.valid_time <= now + pd.Timedelta(hours=hours))].copy()
     main = frame[frame.provider == provider].sort_values("valid_time")
@@ -289,7 +288,10 @@ def forecast_view(store, location, frame):
             st.caption("Sensación estimada a la sombra para cada modelo. Los huecos indican que faltan temperatura, humedad o viento; la banda P10–P90 de temperatura no se aplica a la sensación.")
         if provider in ("climateapp", "climateapp_private"):
             metadata = json.loads(first.metadata)
-            st.markdown('<div class="insight-card"><h3>' + ("Un consenso que aprende de sus aciertos" if metadata.get("trained") else "El consenso está empezando a aprender") + '</h3><p>' + ("La combinación se pondera según los errores observados anteriormente en este lugar y plazo." if metadata.get("trained") else "Por ahora, los modelos tienen el mismo peso. Los pesos se ajustan cuando cada fuente acumula al menos 30 observaciones en tres días por variable y plazo.") + '</p></div>', unsafe_allow_html=True)
+            temporary = metadata.get("temporary_location")
+            title = "El consenso de tu ubicación" if temporary else "Un consenso que aprende de sus aciertos" if metadata.get("trained") else "El consenso está empezando a aprender"
+            description = "Los modelos disponibles tienen el mismo peso. Los lugares que guardas en Ajustes acumulan observaciones para evaluar sus aciertos y ajustar los pesos." if temporary else "La combinación se pondera según los errores observados anteriormente en este lugar y plazo." if metadata.get("trained") else "Por ahora, los modelos tienen el mismo peso. Los pesos se ajustan cuando cada fuente acumula al menos 30 observaciones en tres días por variable y plazo."
+            st.markdown(f'<div class="insight-card"><h3>{title}</h3><p>{description}</p></div>', unsafe_allow_html=True)
         st.caption("Las diferencias entre líneas muestran desacuerdo entre modelos. La banda P10–P90 es un intervalo nativo de la fuente, cuando existe; el desacuerdo entre modelos no es una probabilidad.")
     with climate:
         section("¿Es normal para esta época?", "Compara cada hora prevista con los mismos momentos de años anteriores.", "layers")
@@ -313,6 +315,8 @@ def forecast_view(store, location, frame):
             st.caption(f"{baseline['n']} observaciones · Años {', '.join(map(str, baseline['years']))} · Misma hora local y fechas ±15 días. Es una referencia de la muestra disponible, no una normal climatológica de 30 años.")
         elif pd.isna(target[climate_variable]):
             st.info("Esta hora no aporta los datos necesarios para estimar la sensación térmica.")
+        elif location.id.startswith("auto:"):
+            st.info("La comparación histórica está disponible para tus lugares guardados. Puedes añadir un municipio desde Ajustes.")
         else:
             st.info("La referencia histórica se está preparando. Aparecerá cuando haya suficientes observaciones de años anteriores para esa fecha y hora.")
         station_caption(location)
@@ -357,7 +361,9 @@ def temperature_figure(main, comparison, provider, location, variable="temperatu
 
 
 def station_caption(location):
-    if location.station_id:
+    if location.id.startswith("auto:"):
+        st.caption("Ubicación aproximada del dispositivo. Para acumular observaciones y evaluar aciertos, elige o añade un lugar guardado en Ajustes.")
+    elif location.station_id:
         distance = f" · a {location.station_distance_km:.1f} km" if location.station_distance_km is not None else ""
         st.caption(f"Referencia observada: {location.station_name or location.station_id} ({location.station_id}){distance}. La estación y el punto previsto pueden tener condiciones locales distintas.")
     else:
@@ -411,24 +417,60 @@ def render_forecast_dashboard(evaluation=False):
     store = Store()
     store.seed()
     locations = store.locations()
-    if not locations:
-        empty_state("Tu próximo lugar favorito", "Ve a Ajustes y añade un lugar para empezar a explorar su tiempo.")
+    if not locations and st.session_state.get("selected_forecast_location") != AUTOMATIC:
+        empty_state("Tu próximo lugar favorito", "Ve a Ajustes y añade un lugar, o consulta el tiempo donde estés.")
+        if st.button("Usar mi ubicación", key="enable_location_without_favorites"):
+            st.session_state["selected_forecast_location"] = AUTOMATIC
+            st.session_state["browser_forecast_preferences_loaded"] = True
+            st.rerun()
         return
     lookup = {loc.id: loc for loc in locations}
-    if st.session_state.get("forecast_location") not in lookup:
-        preferred = st.session_state.get("selected_forecast_location")
-        st.session_state["forecast_location"] = preferred if preferred in lookup else locations[0].id
+    choices = [AUTOMATIC, *lookup]
+    preferred = st.session_state.get("selected_forecast_location")
+    selected = preferred if preferred in choices else locations[0].id
     picker, manage = st.columns([4, 1])
     picker.markdown('<span class="location-toolbar-anchor"></span>', unsafe_allow_html=True)
     labels = location_labels(locations)
-    location_id = picker.selectbox("Lugar", list(lookup), index=list(lookup).index(st.session_state["forecast_location"]),
-                                   format_func=labels.get, key="forecast_location", label_visibility="collapsed")
+    labels[AUTOMATIC] = "Ubicación actual"
+    def choose_location():
+        st.session_state["selected_forecast_location"] = st.session_state["forecast_location"]
+        st.session_state["browser_forecast_preferences_loaded"] = True
+    location_id = picker.radio("Lugar", choices, index=choices.index(selected),
+                               format_func=labels.get, key="forecast_location", label_visibility="collapsed",
+                               horizontal=True, on_change=choose_location)
     def open_settings():
         st.session_state["main_view"] = "⚙️ Ajustes"
         st.session_state["scroll_target"] = "places-section"
     manage.button("Mis lugares", on_click=open_settings, use_container_width=True, help="Añadir, quitar o recuperar lugares en Ajustes")
-    location = lookup[location_id]
     st.session_state["selected_forecast_location"] = location_id
+    if location_id == AUTOMATIC:
+        error = st.session_state.get("device_location_error")
+        location = st.session_state.get("device_location")
+        if error:
+            st.info(error)
+        elif location is None:
+            st.caption("Localizando… Si el navegador te pide permiso, permite el acceso a tu ubicación.")
+        else:
+            st.markdown('<p class="device-location-note">Ubicación aproximada · Solo durante esta visita</p>', unsafe_allow_html=True)
+        def refresh_location():
+            st.session_state["device_location_request"] = st.session_state.get("device_location_request", 0) + 1
+            st.session_state.pop("device_location_error", None)
+        st.button("Volver a localizar" if error else "Actualizar ubicación", key="refresh_device_location", on_click=refresh_location)
+        if location is None:
+            return
+        if evaluation:
+            empty_state("Los aciertos, en tus lugares", "Elige un lugar guardado para ver su evaluación. La ubicación actual se consulta sin añadirla a tu historial.")
+            return
+        with st.spinner("Consultando el tiempo de tu ubicación…"):
+            frame, errors = automatic_forecasts(location, store, st.session_state)
+        if errors:
+            st.caption("Fuentes temporalmente sin datos: " + ", ".join(CHART_LABELS[key] for key in errors) + ". Se reintentarán automáticamente.")
+        if frame.empty:
+            st.info("Ahora no hemos podido obtener una previsión para tu ubicación. Puedes elegir un lugar guardado o volver a actualizar en unos minutos.")
+        else:
+            forecast_view(store, location, frame)
+        return
+    location = lookup[location_id]
     if evaluation:
         evaluation_view(store, location)
     else:
@@ -447,6 +489,18 @@ def render_settings():
     st.markdown('<div class="page-intro"><h1>A tu manera.</h1><p>Tus lugares, tu acceso personal y las fuentes que hacen posible tu previsión.</p></div>', unsafe_allow_html=True)
     section("Apariencia", "Un aspecto cómodo a cualquier hora.", "sun")
     appearance_controls()
+    section("Tu previsión", "Elige una vez cómo quieres consultar el tiempo.", "layers")
+    options = ["auto", "ecmwf", "icon", "gfs", "metno"]
+    if private_view():
+        options = ["auto", "climateapp", "ecmwf", "icon", "gfs", "metno", "weathernext3"]
+    preferred = st.session_state.get("preferred_forecast_provider", "auto")
+    selected = preferred if preferred in options else "auto"
+    def remember_model():
+        st.session_state["preferred_forecast_provider"] = st.session_state["forecast_model_preference"]
+        st.session_state["browser_forecast_preferences_loaded"] = True
+    st.radio("Modelo principal", options, format_func=PREFERENCES.get,
+             key="forecast_model_preference", index=options.index(selected), on_change=remember_model)
+    st.caption("Recomendado: el consenso combina las fuentes disponibles. Tu elección se recuerda en este navegador; la portada siempre indica qué fuente estás viendo.")
     st.markdown('<span id="places-section"></span>', unsafe_allow_html=True)
     section("Tus lugares", "Añade, quita o recupera tus sitios favoritos.", "pin")
     location_controls(store)
