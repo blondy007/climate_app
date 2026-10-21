@@ -112,3 +112,11 @@ sensación de las próximas 24 h en dos columnas, sin cajas adicionales.
 Se conservan fuente, identificación de próxima hora, P10–P90 cuando existe,
 hora de actualización, aviso de datos antiguos y nota de estimación a la sombra.
 El fondo mantiene contraste en ambos modos; la ilustración sigue siendo SVG local.
+
+Ajustes en escritorio usa dos columnas alineadas: apariencia/previsión y
+lugares/cuenta y fuentes. Por debajo de 900 px se apilan en orden de lectura.
+El modelo principal ocupa una cuadrícula de opciones de ancho uniforme; las filas
+de lugares tienen un solo separador y botones de ancho acotado. Sus reglas CSS
+se limitan a contenedores con marcadores propios para no añadir bordes o relleno
+a columnas y ancestros. Los contadores de texto quedan bajo el campo, sin tapar
+el icono de contraseña, y los controles numéricos comparten un único contorno.

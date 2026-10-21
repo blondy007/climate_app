@@ -17,6 +17,11 @@
   Vista local ficticia comprobada a 320/390 px en claro/oscuro y escritorio.
   Aceptación pública móvil a 390 px; captura: `test-results/current-widget-production.png`.
   Diseño en `docs/design.md`. No hay cambios pendientes de este rediseño.
+- Corrección local de Ajustes en `codex/settings-desktop-layout`, sin desplegar:
+  columnas alineadas en PC, modelos en cuadrícula, filas de lugares sin bordes
+  duplicados, fuentes bajo su título y formularios sin solapamientos. Cuatro
+  pruebas focalizadas correctas; revisión local ficticia en escritorio 1024/1440 px
+  y móvil 320 px oscuro, sin desbordamiento. Captura: `test-results/settings-desktop-light.png`.
 
 ## Preferencias y límites
 

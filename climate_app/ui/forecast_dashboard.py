@@ -99,7 +99,8 @@ def location_controls(store):
     if not locations:
         st.info("Todavía no tienes lugares activos. Añade uno o recupera un lugar quitado.")
     for location in locations:
-        with st.container(border=True):
+        with st.container():
+            st.markdown('<span class="place-row-anchor"></span>', unsafe_allow_html=True)
             info, action = st.columns([3, 1])
             info.markdown(f'<div class="place-label"><strong>{text(location.alias or location.name)}</strong><span>{text(location.name) + " · " if location.alias else ""}{location.latitude:.4f}, {location.longitude:.4f}</span></div>', unsafe_allow_html=True)
             if action.button("Quitar", key=f"remove_place_{location.id}", use_container_width=True,
@@ -170,7 +171,8 @@ def location_controls(store):
         with st.expander(f"Lugares quitados ({len(inactive)})"):
             st.caption("Recuperar un lugar reactiva su recopilación y permite consultar el historial que ya tenía.")
             for location in inactive:
-                with st.container(border=True):
+                with st.container():
+                    st.markdown('<span class="place-row-anchor"></span>', unsafe_allow_html=True)
                     info, action = st.columns([3, 1])
                     info.markdown(f'<div class="place-label"><strong>{text(location.display_name)}</strong><span>{location.latitude:.4f}, {location.longitude:.4f}</span></div>', unsafe_allow_html=True)
                     if action.button("Recuperar", key=f"restore_place_{location.id}", use_container_width=True,
@@ -495,34 +497,45 @@ def render_settings():
     store = Store()
     store.seed()
     st.markdown('<div class="page-intro"><h1>A tu manera.</h1><p>Tus lugares, tu acceso personal y las fuentes que hacen posible tu previsión.</p></div>', unsafe_allow_html=True)
-    section("Apariencia", "Un aspecto cómodo a cualquier hora.", "sun")
-    appearance_controls()
-    section("Tu previsión", "Elige una vez cómo quieres consultar el tiempo.", "layers")
-    options = ["auto", "ecmwf", "icon", "gfs", "metno"]
-    if private_view():
-        options = ["auto", "climateapp", "ecmwf", "icon", "gfs", "metno", "weathernext3"]
-    preferred = st.session_state.get("preferred_forecast_provider", "auto")
-    selected = preferred if preferred in options else "auto"
-    def remember_model():
-        st.session_state["preferred_forecast_provider"] = st.session_state["forecast_model_preference"]
-        st.session_state["browser_forecast_preferences_loaded"] = True
-    st.radio("Modelo principal", options, format_func=PREFERENCES.get,
-             key="forecast_model_preference", index=options.index(selected), on_change=remember_model)
-    st.caption("Recomendado: el consenso combina las fuentes disponibles. Tu elección se recuerda en este navegador; la portada siempre indica qué fuente estás viendo.")
+    with st.container():
+        st.markdown('<span class="settings-preferences-anchor"></span>', unsafe_allow_html=True)
+        appearance, forecast = st.columns(2, gap="large")
+        with appearance:
+            section("Apariencia", "Un aspecto cómodo a cualquier hora.", "sun")
+            appearance_controls()
+        with forecast:
+            section("Tu previsión", "Elige una vez cómo quieres consultar el tiempo.", "layers")
+            options = ["auto", "ecmwf", "icon", "gfs", "metno"]
+            if private_view():
+                options = ["auto", "climateapp", "ecmwf", "icon", "gfs", "metno", "weathernext3"]
+            preferred = st.session_state.get("preferred_forecast_provider", "auto")
+            selected = preferred if preferred in options else "auto"
+            def remember_model():
+                st.session_state["preferred_forecast_provider"] = st.session_state["forecast_model_preference"]
+                st.session_state["browser_forecast_preferences_loaded"] = True
+            st.markdown('<span class="settings-model-anchor"></span>', unsafe_allow_html=True)
+            st.radio("Modelo principal", options, format_func=PREFERENCES.get,
+                     key="forecast_model_preference", index=options.index(selected), on_change=remember_model)
+            st.caption("Recomendado: el consenso combina las fuentes disponibles. Tu elección se recuerda en este navegador; la portada siempre indica qué fuente estás viendo.")
     st.markdown('<span id="places-section"></span>', unsafe_allow_html=True)
-    section("Tus lugares", "Añade, quita o recupera tus sitios favoritos.", "pin")
-    location_controls(store)
-    section("Tu cuenta", "Acceso personal a WeatherNext y al consenso completo.", "layers")
-    owner_login(store)
-    locations = store.locations()
-    if locations:
-        lookup = {loc.id: loc for loc in locations}
-        location_id = st.selectbox("Estado de las fuentes para", list(lookup), format_func=location_labels(locations).get)
-        section("Detrás de la previsión", "Fuentes, estaciones y actualización automática.", "clock")
-        provider_status(store, lookup[location_id])
-    with st.expander("Fuentes, licencias y datos"):
-        st.markdown("[Open-Meteo](https://open-meteo.com/) · ECMWF · DWD · NOAA · [MET Norway](https://www.met.no/en) · [Meteostat](https://meteostat.net/). [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). ClimateApp realiza conversiones de unidades y agregaciones.")
-        st.caption("Los iconos resumen la nubosidad y precipitación disponibles; no sustituyen avisos oficiales. La temperatura destacada es una previsión de la próxima hora disponible, no una medición actual. Los datos ausentes se muestran con una raya.")
-        st.caption("Aplicación de uso personal y coste adicional 0 €. Las previsiones y observaciones se conservan automáticamente sin necesidad de visitar la web.")
+    with st.container():
+        st.markdown('<span class="settings-details-anchor"></span>', unsafe_allow_html=True)
+        places, account = st.columns(2, gap="large")
+        with places:
+            section("Tus lugares", "Añade, quita o recupera tus sitios favoritos.", "pin")
+            location_controls(store)
+        with account:
+            section("Tu cuenta", "Acceso personal a WeatherNext y al consenso completo.", "layers")
+            owner_login(store)
+            locations = store.locations()
+            if locations:
+                section("Detrás de la previsión", "Fuentes, estaciones y actualización automática.", "clock")
+                lookup = {loc.id: loc for loc in locations}
+                location_id = st.selectbox("Estado de las fuentes para", list(lookup), format_func=location_labels(locations).get)
+                provider_status(store, lookup[location_id])
+            with st.expander("Fuentes, licencias y datos"):
+                st.markdown("[Open-Meteo](https://open-meteo.com/) · ECMWF · DWD · NOAA · [MET Norway](https://www.met.no/en) · [Meteostat](https://meteostat.net/). [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). ClimateApp realiza conversiones de unidades y agregaciones.")
+                st.caption("Los iconos resumen la nubosidad y precipitación disponibles; no sustituyen avisos oficiales. La temperatura destacada es una previsión de la próxima hora disponible, no una medición actual. Los datos ausentes se muestran con una raya.")
+                st.caption("Aplicación de uso personal y coste adicional 0 €. Las previsiones y observaciones se conservan automáticamente sin necesidad de visitar la web.")
     if private_view():
         st.caption("Google BigQuery · © 2024-6 Google LLC, whose machine learning models were used to create the experimental data made available under the following licence terms https://storage.googleapis.com/weathernext-public/terms-of-use.pdf. This data is intended for experimental modelling only and is not intended, validated, or approved for real world use.")

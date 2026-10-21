@@ -164,12 +164,40 @@ input::placeholder,textarea::placeholder { color:var(--muted); opacity:1; }
 [data-baseweb="checkbox"] p,[data-testid="stMarkdownContainer"] li { color:var(--ink); }
 [data-testid="stButton"] button p,[data-testid="stDownloadButton"] button p { color:inherit; }
 [data-testid="stVerticalBlockBorderWrapper"]>div { border-color:var(--line); }
-[data-testid="stVerticalBlockBorderWrapper"]:has(.place-label)>div { border:0; border-bottom:1px solid var(--line); border-radius:0; padding:16px 0; }
 [data-testid="stNumberInput"] button { background:var(--soft); color:var(--ink); }
 [data-testid="stFileUploaderDropzone"] { background:var(--surface); color:var(--ink); }
 [data-testid="stAlert"] { background:var(--soft); color:var(--ink); }
 [data-testid="stAlert"] p { color:var(--ink); }
 .place-label { padding:4px 0; }.place-label strong { display:block; font-size:15px; font-weight:600; color:var(--ink); }.place-label span { display:block; margin-top:5px; color:var(--muted); font-size:11px; overflow-wrap:anywhere; }
+/* Settings own their layout; avoid styling every ancestor of a place label. */
+.element-container:has(.settings-preferences-anchor),.element-container:has(.settings-details-anchor),.element-container:has(.settings-model-anchor),.element-container:has(.place-row-anchor) { display:none; }
+.element-container:has(.settings-model-anchor)+.element-container [role="radiogroup"] { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); width:100%; background:transparent; border:0; padding:0; gap:8px; }
+.element-container:has(.settings-model-anchor)+.element-container [data-baseweb="radio"] { width:100%; height:100%; box-sizing:border-box; align-self:stretch; min-width:0; min-height:44px; justify-content:flex-start; border:1px solid var(--line); padding:10px 14px; background:var(--surface); }
+.element-container:has(.settings-model-anchor)+.element-container [data-baseweb="radio"]:has(input:checked) { background:#193e4d; border-color:#193e4d; }
+.element-container:has(.settings-model-anchor)+.element-container [data-baseweb="radio"] p { overflow-wrap:anywhere; }
+[data-testid="stVerticalBlock"]:has(>.element-container .place-row-anchor) { padding:14px 0; gap:10px; border-bottom:1px solid var(--line); }
+[data-testid="stVerticalBlock"]:has(>.element-container .place-row-anchor)>[data-testid="stHorizontalBlock"] { align-items:center; flex-wrap:nowrap!important; gap:16px; }
+[data-testid="stVerticalBlock"]:has(>.element-container .place-row-anchor)>[data-testid="stHorizontalBlock"]>[data-testid="column"]:first-child { flex:1 1 0!important; min-width:0!important; width:auto!important; }
+[data-testid="stVerticalBlock"]:has(>.element-container .place-row-anchor)>[data-testid="stHorizontalBlock"]>[data-testid="column"]:last-child { flex:0 0 100px!important; min-width:100px!important; width:100px!important; }
+[data-testid="stMarkdownContainer"]:has(>.place-label) { margin:0; }
+.place-label strong { overflow-wrap:anywhere; }
+[data-testid="stVerticalBlock"]:has(>.element-container .place-row-anchor)>[data-testid="stExpander"] { border-top:0; }
+[data-testid="stVerticalBlock"]:has(>.element-container .place-row-anchor)>[data-testid="stExpander"] summary { padding:8px 0; }
+[data-testid="stVerticalBlock"]:has(>.element-container .settings-details-anchor) [data-testid="InputInstructions"] { position:static; height:auto; margin:3px 0 0; text-align:right; line-height:1.3; color:var(--muted); }
+[data-testid="stVerticalBlock"]:has(>.element-container .settings-details-anchor) [data-testid="stNumberInputContainer"] { background:var(--surface); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+[data-testid="stVerticalBlock"]:has(>.element-container .settings-details-anchor) [data-testid="stNumberInputContainer"]:focus-within { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+[data-testid="stVerticalBlock"]:has(>.element-container .settings-details-anchor) [data-testid="stNumberInputContainer"] [data-baseweb="input"] { border-radius:0; }
+[data-testid="stVerticalBlock"]:has(>.element-container .settings-details-anchor) [data-testid="stNumberInputContainer"] button { border-left:1px solid var(--line); border-radius:0; }
+@media(max-width:900px) {
+ [data-testid="stVerticalBlock"]:has(>.element-container .settings-preferences-anchor)>[data-testid="stHorizontalBlock"],
+ [data-testid="stVerticalBlock"]:has(>.element-container .settings-details-anchor)>[data-testid="stHorizontalBlock"] { flex-direction:column; gap:0; }
+ [data-testid="stVerticalBlock"]:has(>.element-container .settings-preferences-anchor)>[data-testid="stHorizontalBlock"]>[data-testid="column"],
+ [data-testid="stVerticalBlock"]:has(>.element-container .settings-details-anchor)>[data-testid="stHorizontalBlock"]>[data-testid="column"] { width:100%!important; flex:1 1 auto!important; min-width:0!important; }
+}
+@media(max-width:640px) {
+ [data-testid="stVerticalBlock"]:has(>.element-container .place-row-anchor)>[data-testid="stHorizontalBlock"] { gap:12px; }
+ [data-testid="stVerticalBlock"]:has(>.element-container .place-row-anchor)>[data-testid="stHorizontalBlock"]>[data-testid="column"]:last-child { flex-basis:90px!important; min-width:90px!important; width:90px!important; }
+}
 /* Saved places are native keyboard-accessible tabs, scrollable by touch. */
 .element-container:has(.location-toolbar-anchor) { display:none; }
 [data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) { flex-wrap:nowrap!important; gap:8px; align-items:center; }
