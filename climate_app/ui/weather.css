@@ -66,10 +66,10 @@ h1,h2,h3 { letter-spacing:-.035em; }
 .hero-art { display:flex; align-items:center; padding:0 50px; filter:drop-shadow(0 15px 18px #062e4525); }
 .hero-bottom { position:relative; z-index:1; border-top:1px solid #ffffff20; padding-top:14px; display:flex; justify-content:space-between; gap:8px; font-size:10px; color:#c4d9e3; }
 .freshness { display:flex; align-items:center; gap:6px; }.freshness i { height:5px; width:5px; background:#a7ddb6; border-radius:50%; }.freshness.stale i { background:#ffd27f; }
-.weather-details { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); column-gap:28px; row-gap:0; margin:4px 0 12px; padding:0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
-.weather-detail { min-width:0; padding:23px 0; }
-.detail-label { color:var(--muted); font-size:12px; display:flex; align-items:center; gap:8px; }.detail-label svg { color:#368a9a; width:18px; height:18px; }
-.detail-value { color:var(--ink); font-size:30px; font-weight:600; letter-spacing:-1px; margin:10px 0 0; font-variant-numeric:tabular-nums; }.detail-value small { font-size:12px; color:var(--muted); font-weight:400; letter-spacing:0; }.detail-note { display:block; color:var(--muted); font-size:11px; font-weight:400; letter-spacing:0; line-height:1.5; margin-top:4px; }
+.weather-details { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); column-gap:16px; row-gap:0; margin:4px auto 10px; width:100%; max-width:880px; padding:0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); text-align:center; }
+.weather-detail { min-width:0; padding:15px 4px; }
+.detail-label { color:var(--muted); font-size:11px; display:flex; align-items:center; justify-content:center; gap:6px; }.detail-label svg { color:#368a9a; width:16px; height:16px; }
+.detail-value { color:var(--ink); font-size:26px; font-weight:600; letter-spacing:-1px; margin:5px 0 0; font-variant-numeric:tabular-nums; }.detail-value small { font-size:11px; color:var(--muted); font-weight:400; letter-spacing:0; }.detail-note { display:block; color:var(--muted); font-size:10px; font-weight:400; letter-spacing:0; line-height:1.4; margin-top:2px; }
 .hourly-card,.daily-card { background:transparent; border:0; border-radius:0; padding:18px 0 8px; }
 .card-heading { display:flex; align-items:center; gap:8px; color:var(--muted); margin-bottom:16px; }.card-heading h2 { color:var(--ink); font-size:14px; font-weight:650; margin:0; padding:0; letter-spacing:-.2px; }.card-heading>span { margin-left:auto; font-size:10px; color:var(--muted); }
 .hourly-scroll { display:flex; gap:12px; overflow:auto; padding:0 0 12px; scrollbar-width:thin; scrollbar-color:var(--line) transparent; scroll-snap-type:x proximity; }
@@ -99,7 +99,7 @@ h1,h2,h3 { letter-spacing:-.035em; }
  .element-container:has(.nav-anchor)+.element-container p { font-size:10px; }
  .weather-hero { border-radius:23px; padding:20px 22px 16px; }.hero-top { flex-wrap:wrap; gap:8px; font-size:14px; }.source-chip { font-size:9px; padding:4px 8px; }
  .hero-main { padding:19px 0 17px; }.hero-eyebrow { font-size:8px; letter-spacing:.08em; }.hero-value { font-size:72px; letter-spacing:-4px; }.hero-value small { font-size:21px; }.weather-hero h1 { font-size:20px; }.hero-art { padding:0; margin-right:-7px; }.hero-art svg { width:125px; height:125px; }.hero-extremes { font-size:10px; }.hero-bottom { font-size:9px; }.hero-bottom>span:last-child { display:none; }
- .weather-details { grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:24px; margin-bottom:8px; }.weather-detail { padding:18px 0; }.weather-detail:nth-child(n+3) { border-top:1px solid var(--line); }.detail-value { font-size:28px; margin-top:7px; }.detail-label { font-size:12px; }.detail-note { font-size:10px; }
+ .weather-details { grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:16px; margin-bottom:6px; }.weather-detail { padding:12px 2px; }.weather-detail:nth-child(n+3) { border-top:1px solid var(--line); }.detail-value { font-size:24px; margin-top:4px; }.detail-label { font-size:11px; }.detail-note { font-size:10px; }
  .hourly-card,.daily-card { padding:18px 0 8px; }.card-heading h2 { font-size:14px; }.card-heading>span { font-size:10px; }.hourly-scroll { gap:8px; }.hour-cell { flex-basis:58px; }.day-row { grid-template-columns:1fr 32px 43px 27px minmax(35px,.9fr) 27px; gap:6px; font-size:12px; min-height:65px; }.day-row svg { width:32px; height:32px; }.day-rain { font-size:10px; }.day-row small { font-size:9px; }
  .section-heading h2 { font-size:19px; }.section-heading p { font-size:11px; }.page-intro h1 { font-size:29px; }.page-intro p { font-size:12px; }
  [data-testid="stHorizontalBlock"] { gap:10px; }[data-testid="stMetric"] { padding:14px 0; }[data-testid="stMetricValue"] { font-size:25px; }
@@ -127,15 +127,23 @@ input::placeholder,textarea::placeholder { color:var(--muted); opacity:1; }
 [data-testid="stAlert"] { background:var(--soft); color:var(--ink); }
 [data-testid="stAlert"] p { color:var(--ink); }
 .place-label { padding:4px 0; }.place-label strong { display:block; font-size:15px; font-weight:600; color:var(--ink); }.place-label span { display:block; margin-top:5px; color:var(--muted); font-size:11px; overflow-wrap:anywhere; }
-/* Keep the location selector and its accessible settings button on one row. */
+/* Saved places are native keyboard-accessible tabs, scrollable by touch. */
 .element-container:has(.location-toolbar-anchor) { display:none; }
 [data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) { flex-wrap:nowrap!important; gap:8px; align-items:center; }
 [data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor)>[data-testid="column"]:first-child { flex:1 1 0!important; min-width:0!important; width:auto!important; }
 [data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor)>[data-testid="column"]:last-child { flex:0 0 44px!important; min-width:44px!important; width:44px!important; }
+[data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) [role="radiogroup"] { width:100%; max-width:100%; flex-direction:row; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; background:transparent; border:0; border-bottom:1px solid var(--line); border-radius:0; padding:2px 0 5px; gap:4px; }
+[data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) [role="radiogroup"]::-webkit-scrollbar { display:none; }
+[data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) [data-baseweb="radio"] { flex:0 0 auto; border-radius:0; border-bottom:2px solid transparent; min-height:44px; padding:9px 12px; background:transparent; }
+[data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) [data-baseweb="radio"] p { color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:230px; font-size:13px; }
+[data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) [data-baseweb="radio"]:has(input:checked) { border-bottom-color:var(--accent); background:var(--soft); }
+[data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) [data-baseweb="radio"]:has(input:checked) p { color:var(--accent); }
+[data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) [data-baseweb="radio"]:first-child::before { content:"◎"; color:var(--accent); font-size:19px; line-height:1; margin-right:6px; }
 [data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) button { width:44px; height:42px; padding:0; }
 [data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) button p { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 [data-testid="stHorizontalBlock"]:has(.location-toolbar-anchor) button::before { content:""; width:20px; height:20px; background:currentColor; mask-size:contain; mask-position:center; mask-repeat:no-repeat; }
 .hero-top>span:first-child { min-width:0; overflow-wrap:anywhere; }
+.device-location-note { color:var(--muted); font-size:11px; margin:0; }
 .hero-feels { display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 7px; margin:3px 0 12px; color:#e1eef3; font-size:14px; }
 .hero-feels strong { color:white; font-size:21px; font-weight:600; }
 .hero-feels small { flex-basis:100%; font-size:10px; opacity:.8; }

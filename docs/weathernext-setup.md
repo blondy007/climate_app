@@ -59,6 +59,9 @@ La web mantiene su dominio y utiliza HTTPS. El propietario inicia sesión desde
 el móvil sin Tailscale. Los visitantes ven las fuentes abiertas y un consenso que
 excluye WeatherNext; el propietario ve también WeatherNext y el consenso completo.
 No hay registro abierto ni API pública de datos WeatherNext.
+El login ofrece recordar este dispositivo durante 30 días, incluso tras reabrir
+la web. Cerrar sesión revoca ese acceso. La ubicación automática utiliza solo
+fuentes abiertas; WeatherNext permanece asociado a los lugares guardados.
 
 Tras recibir el acceso hay que verificar: identidad autorizada, billing deshabilitado,
 esquema real, celdas de ambas ubicaciones, percentiles, unidades y lluvia horaria,

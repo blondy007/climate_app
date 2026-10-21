@@ -14,6 +14,9 @@ En Ajustes puedes elegir tema claro, oscuro o automático (según el dispositivo
 recordado por navegador, y quitar o recuperar lugares sin perder su historial.
 Puedes asignar alias como Casa o Trabajo, deshacer la última retirada y tocar
 un día para explorar sus horas. El botón de gestión junto al lugar abre su sección.
+Tiempo permite cambiar de lugar mediante una franja desplazable o usar la ubicación
+actual del dispositivo. El modelo principal se elige en Ajustes y se recuerda
+en el navegador. Los cuatro indicadores son compactos y centrados.
 [Referencias y decisiones de diseño](docs/design.md).
 
 **Coste incremental estricto: 0 EUR.** No activar billing, pruebas con cargo,
@@ -36,8 +39,9 @@ APIs de pago ni recursos Oracle adicionales.
 
 ## Ejecución
 - `python -m climate_app.runtime`: web y recopilación automática.
-- `streamlit run app.py`: solo interfaz sobre datos previamente recopilados.
+- `python -m climate_app.web run app.py`: solo web, con recuperación de sesión personal.
 - `python -m unittest discover -s tests -v`: pruebas sin APIs ni credenciales reales.
+- `node --test tests/*.test.cjs`: pruebas del componente de navegador.
 
 ## Docker
 

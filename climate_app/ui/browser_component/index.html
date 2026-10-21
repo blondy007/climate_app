@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Preferencias y ubicación de ClimateApp</title></head>
+<body><script>
+(() => {
+  const storageKey = "climateapp.forecast.preferences.v1";
+  const models = ["auto", "climateapp", "ecmwf", "icon", "gfs", "metno", "weathernext3"];
+  let first = true, args = {}, request = null, busy = false, blocked = false, lastAttempt = 0, serial = 0;
+  let authStarted = false, authAction = null, authQueue = Promise.resolve(), lastAuth = 0;
+  const outbox = [];
+  const send = (type, extra = {}) => window.parent.postMessage({isStreamlitMessage: true, type, ...extra}, "*");
+  // Include recent events so simultaneous permission/login replies cannot overwrite one another.
+  const emit = value => {
+    outbox.push({...value, nonce: `${Date.now()}-${++serial}`});
+    if (outbox.length > 16) outbox.shift();
+    send("streamlit:setComponentValue", {dataType: "json", value: {events: [...outbox]}});
+  };
+  const api = async (action, options = {}) => {
+    const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 10000);
+    try {
+      const response = await fetch(`/_climate/auth/${action}`, {credentials: "same-origin", cache: "no-store",
+        redirect: "error", signal: controller.signal, ...options});
+      if (!response.ok) throw new Error("Session request failed");
+      return await response.json();
+    } finally { clearTimeout(timeout); }
+  };
+  const authentication = action => {
+    // Serialize remember/logout so a late login response cannot recreate a logged-out cookie.
+    authQueue = authQueue.then(async () => {
+      lastAuth = Date.now();
+      try {
+        let result = await api("session");
+        if (action) {
+          result = await api(action.kind === "logout" ? "logout" : "remember", {method: "POST",
+            headers: {"Content-Type": "application/json", "X-ClimateApp-Request": "owner-session", "X-Xsrftoken": result.csrf},
+            body: JSON.stringify(action.kind === "remember" ? {code: action.code} : {})});
+        }
+        if (action?.kind === "logout") {
+          emit({kind: "auth_logout", request: action.nonce});
+          try { new BroadcastChannel("climateapp.owner.session").postMessage("logout"); } catch (_) {}
+        } else if (result.authenticated && result.proof) emit({kind: "auth", proof: result.proof, request: action?.nonce});
+        else emit({kind: "auth_lost", request: action?.nonce});
+      } catch (_) { if (action) emit({kind: "auth_error", request: action.nonce}); }
+    });
+  };
+  try {
+    const channel = new BroadcastChannel("climateapp.owner.session");
+    channel.onmessage = event => { if (event.data === "logout") authentication(null); };
+  } catch (_) {}
+  const locate = () => {
+    if (busy || blocked || !args.automatic || !args.weather_view || document.visibilityState === "hidden") return;
+    lastAttempt = Date.now();
+    if (!window.isSecureContext) { blocked = true; emit({kind: "error", reason: "https"}); return; }
+    if (!navigator.geolocation) { blocked = true; emit({kind: "error", reason: "unsupported"}); return; }
+    busy = true;
+    navigator.geolocation.getCurrentPosition(position => {
+      busy = false;
+      if (!args.automatic || !args.weather_view) return;
+      // Exact coordinates never leave the browser or enter persistent storage.
+      emit({kind: "position", latitude: Math.round(position.coords.latitude * 100) / 100,
+        longitude: Math.round(position.coords.longitude * 100) / 100, accuracy: position.coords.accuracy,
+        timestamp: position.timestamp, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone});
+    }, error => {
+      busy = false;
+      if (!args.automatic || !args.weather_view) return;
+      blocked = error.code === 1;
+      emit({kind: "error", reason: ({1: "denied", 2: "unavailable", 3: "timeout"})[error.code] || "unavailable"});
+    }, {enableHighAccuracy: true, maximumAge: 300000, timeout: 12000});
+  };
+  window.addEventListener("message", event => {
+    if (event.source !== window.parent || event.data?.type !== "streamlit:render") return;
+    clearInterval(handshake);
+    send("streamlit:setFrameHeight", {height: 0});
+    const wasAutomatic = args.automatic;
+    args = event.data.args || {};
+    if (args.auth_action && args.auth_action.nonce !== authAction) {
+      authAction = args.auth_action.nonce; authStarted = true; authentication(args.auth_action);
+    } else if (!authStarted) { authStarted = true; authentication(null); }
+    if (first) {
+      first = false;
+      if (args.restore) {
+        let saved = {};
+        try { saved = JSON.parse(localStorage.getItem(storageKey) || "{}") || {}; } catch (_) {}
+        emit({kind: "preferences", automatic: saved.automatic === true,
+          model: models.includes(saved.model) ? saved.model : "auto"});
+        return;
+      }
+    }
+    try { localStorage.setItem(storageKey, JSON.stringify({automatic: !!args.automatic,
+      model: models.includes(args.model) ? args.model : "auto"})); } catch (_) {}
+    if (request !== args.request || (!wasAutomatic && args.automatic)) {
+      request = args.request;
+      blocked = false;
+      lastAttempt = 0;
+    }
+    if (Date.now() - lastAttempt >= 300000) locate();
+  });
+  const resume = () => {
+    if (Date.now() - lastAttempt >= 300000) locate();
+    if (document.visibilityState !== "hidden" && Date.now() - lastAuth >= 300000) authentication(null);
+  };
+  document.addEventListener("visibilitychange", resume);
+  setInterval(resume, 60000);
+  // A cached iframe can load before Streamlit registers its parent listener.
+  // Retry the handshake until the first render acknowledges readiness.
+  const handshake = setInterval(() => send("streamlit:componentReady", {apiVersion: 1}), 250);
+  send("streamlit:componentReady", {apiVersion: 1});
+})();
+</script></body></html>

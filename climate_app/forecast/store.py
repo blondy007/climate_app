@@ -50,6 +50,10 @@ CREATE TABLE IF NOT EXISTS state (
 CREATE TABLE IF NOT EXISTS budget (
  service TEXT NOT NULL, period TEXT NOT NULL, used INTEGER NOT NULL,
  PRIMARY KEY(service,period));
+CREATE TABLE IF NOT EXISTS owner_browser_tokens (
+ token_hash TEXT PRIMARY KEY, kind TEXT NOT NULL, owner_fingerprint TEXT NOT NULL,
+ session_hash TEXT, expires_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS owner_browser_expiry ON owner_browser_tokens(expires_at);
 PRAGMA user_version=1;
 """
 POINT_COLUMNS = ("temperature", "humidity", "precipitation", "wind_speed", "wind_direction",

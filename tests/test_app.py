@@ -24,10 +24,10 @@ class AppTests(unittest.TestCase):
                 store.save_forecast(location.id, Forecast("ecmwf", now, [dict(valid_time=now + timedelta(hours=2), temperature=21)]))
             with patch.dict(os.environ, {"CLIMATE_FORECAST_DB": str(path)}):
                 app = AppTest.from_file(str(Path(__file__).parents[1] / "app.py")).run(timeout=30)
-                options = app.selectbox(key="forecast_location").options
+                options = app.radio(key="forecast_location").options
                 self.assertEqual(len(options), len(set(options)))
                 self.assertTrue(any("40.4594" in label for label in options))
-                app.selectbox(key="forecast_location").set_value(second.id).run(timeout=30)
+                app.radio(key="forecast_location").set_value(second.id).run(timeout=30)
                 next(button for button in app.button if button.label == "Mis lugares").click().run(timeout=30)
                 app.text_input(key=f"alias_input_{second.id}").set_value("Trabajo")
                 [button for button in app.button if button.label == "Guardar alias"][1].click().run(timeout=30)
@@ -39,8 +39,8 @@ class AppTests(unittest.TestCase):
                 self.assertEqual(len(store.locations()), 3)
                 self.assertEqual(store.locations()[1].alias, "Trabajo")
                 app.radio(key="main_view").set_value("🌤️ Previsión").run(timeout=30)
-                self.assertEqual(app.selectbox(key="forecast_location").value, second.id)
-                self.assertIn("Trabajo · Torrejón de Ardoz", app.selectbox(key="forecast_location").options)
+                self.assertEqual(app.radio(key="forecast_location").value, second.id)
+                self.assertIn("Trabajo · Torrejón de Ardoz", app.radio(key="forecast_location").options)
                 self.assertTrue(any('Trabajo · Torrejón de Ardoz' in element.value and 'hero-top' in element.value for element in app.markdown))
                 self.assertEqual(len(store.forecasts(second.id)), 1)
 
@@ -73,10 +73,12 @@ class AppTests(unittest.TestCase):
                 self.assertIsNone(app.session_state["forecast_selected_day"])
                 first_day = pd.Timestamp(now + timedelta(hours=1)).tz_convert("Europe/Madrid").date().isoformat()
                 app.button(key=f"forecast_day_{first_day}").click().run(timeout=30)
-                next(select for select in app.selectbox if select.label == "Previsión principal").set_value("icon").run(timeout=30)
+                app.radio(key="main_view").set_value("⚙️ Ajustes").run(timeout=30)
+                app.radio(key="forecast_model_preference").set_value("icon").run(timeout=30)
+                app.radio(key="main_view").set_value("🌤️ Previsión").run(timeout=30)
                 self.assertIsNone(app.session_state["forecast_selected_day"])
                 app.button(key=f"forecast_day_{first_day}").click().run(timeout=30)
-                app.selectbox(key="forecast_location").set_value(store.locations()[1].id).run(timeout=30)
+                app.radio(key="forecast_location").set_value(store.locations()[1].id).run(timeout=30)
                 self.assertIsNone(app.session_state["forecast_selected_day"])
                 self.assertEqual(len(app.exception), 0, str(app.exception))
 
@@ -91,7 +93,7 @@ class AppTests(unittest.TestCase):
                 store.save_forecast(location.id, Forecast("ecmwf", now, [dict(valid_time=now + timedelta(hours=2), temperature=21)]))
             with patch.dict(os.environ, {"CLIMATE_FORECAST_DB": str(path)}):
                 app = AppTest.from_file(str(Path(__file__).parents[1] / "app.py")).run(timeout=30)
-                app.selectbox(key="forecast_location").set_value(second.id).run(timeout=30)
+                app.radio(key="forecast_location").set_value(second.id).run(timeout=30)
                 next(button for button in app.button if button.label == "Mis lugares").click().run(timeout=30)
                 self.assertEqual(app.radio(key="main_view").value, "⚙️ Ajustes")
                 app.button(key=f"remove_place_{first.id}").click().run(timeout=30)
@@ -108,7 +110,7 @@ class AppTests(unittest.TestCase):
                 app.button(key=f"restore_place_{second.id}").click().run(timeout=30)
                 app.radio(key="main_view").set_value("🌤️ Previsión").run(timeout=30)
                 self.assertEqual(len(app.exception), 0, str(app.exception))
-                self.assertEqual(app.selectbox(key="forecast_location").value, second.id)
+                self.assertEqual(app.radio(key="forecast_location").value, second.id)
                 self.assertTrue(any('21°' in element.value for element in app.markdown))
 
     def test_dark_theme_survives_navigation_and_updates_charts(self):
@@ -154,25 +156,25 @@ class AppTests(unittest.TestCase):
                                         "CLIMATE_OWNER_PASSWORD_HASH": password_hash(test_password), "CLIMATE_HTTPS_VERIFIED": "1"}):
                 app = AppTest.from_file(str(Path(__file__).parents[1] / "app.py")).run(timeout=30)
                 self.assertEqual(len(app.exception), 0, str(app.exception))
-                model = next(select for select in app.selectbox if select.label == "Previsión principal")
-                self.assertNotIn("Google WeatherNext 3", model.options)
+                self.assertFalse(any(select.label == "Previsión principal" for select in app.selectbox))
                 app.radio(key="main_view").set_value("⚙️ Ajustes").run(timeout=30)
+                self.assertNotIn("WeatherNext 3", app.radio(key="forecast_model_preference").options)
                 app.text_input(key="owner_username").set_value("test-owner")
                 app.text_input(key="owner_password").set_value(test_password)
                 next(button for button in app.button if button.label == "Entrar").click().run(timeout=30)
                 self.assertEqual(len(app.exception), 0, str(app.exception))
-                app.radio(key="main_view").set_value("🌤️ Previsión").run(timeout=30)
-                model = next(select for select in app.selectbox if select.label == "Previsión principal")
-                self.assertIn("Google WeatherNext 3", model.options)
+                model = app.radio(key="forecast_model_preference")
+                self.assertIn("WeatherNext 3", model.options)
                 model.set_value("weathernext3").run(timeout=30)
+                app.radio(key="main_view").set_value("🌤️ Previsión").run(timeout=30)
                 self.assertEqual(len(app.exception), 0, str(app.exception))
                 self.assertTrue(any('hero-value' in element.value and '30°' in element.value for element in app.markdown))
                 app.radio(key="main_view").set_value("⚙️ Ajustes").run(timeout=30)
                 next(button for button in app.button if button.label == "Cerrar sesión").click().run(timeout=30)
                 self.assertEqual(len(app.exception), 0, str(app.exception))
+                self.assertNotIn("WeatherNext 3", app.radio(key="forecast_model_preference").options)
                 app.radio(key="main_view").set_value("🌤️ Previsión").run(timeout=30)
-                model = next(select for select in app.selectbox if select.label == "Previsión principal")
-                self.assertNotIn("Google WeatherNext 3", model.options)
+                self.assertFalse(any("30°" in element.value and "hero-value" in element.value for element in app.markdown))
 
     def test_forecast_and_empty_evaluation_render_without_network(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -203,10 +205,10 @@ class AppTests(unittest.TestCase):
                 self.assertEqual(len(app.exception), 0, str(app.exception))
                 self.assertGreater(len(app.get("download_button")), 0)
                 other_place = store.locations()[1].id
-                app.selectbox(key="forecast_location").set_value(other_place).run(timeout=30)
+                app.radio(key="forecast_location").set_value(other_place).run(timeout=30)
                 app.radio(key="main_view").set_value("⚙️ Ajustes").run(timeout=30)
                 app.radio(key="main_view").set_value("🌤️ Previsión").run(timeout=30)
-                self.assertEqual(app.selectbox(key="forecast_location").value, other_place)
+                self.assertEqual(app.radio(key="forecast_location").value, other_place)
                 app.radio(key="main_view").set_value("🎯 Aciertos").run(timeout=30)
                 self.assertEqual(len(app.exception), 0, str(app.exception))
                 app.radio(key="main_view").set_value("📊 Histórico").run(timeout=30)

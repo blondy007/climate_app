@@ -5,6 +5,10 @@
 `python -m climate_app.runtime` supervisa Streamlit y un recolector independiente
 de las visitas. Reinicia el recolector si termina inesperadamente y propaga señales
 de parada. Un bloqueo de proceso evita dos recolectores sobre el mismo volumen.
+La web arranca con `python -m climate_app.web run app.py`, que registra las rutas
+de sesión en el mismo servidor y puerto. `streamlit run app.py` directo no incorpora
+esas rutas y no permite recordar el login. La integración está probada con la
+versión fijada de Streamlit 1.38.0; revisar el registro de rutas al actualizarla.
 
 El volumen existente `/app/data` conserva el CSV y umbrales originales, además de:
 
@@ -48,6 +52,22 @@ y selección previa. La recuperación respeta el mismo límite de diez lugares.
 En Tiempo, tocar un día abre sus horas locales disponibles; **Ver próximas 24 horas**
 vuelve a la franja general. No cambia la temperatura de próxima hora de la portada.
 
+Los lugares se eligen en una franja horizontal. **Ubicación actual** solicita el
+permiso del navegador y actualiza la posición como máximo cada cinco minutos,
+solo con la vista visible. Las coordenadas se redondean a dos decimales antes
+de salir del navegador y se utilizan únicamente durante la visita; no se añaden
+lugares, previsiones ni posiciones al archivo compartido. La previsión consulta
+las cuatro fuentes abiertas con caché en memoria de sesión (tres horas si están
+todas; reintenta fuentes fallidas a los 15 minutos y fallos totales a los dos).
+Comparte los límites gratuitos persistentes existentes. Este modo no consulta
+WeatherNext ni atribuye aciertos o climatología de una estación no vinculada.
+Los errores de permiso o de fuentes se muestran sin inventar datos.
+
+**Ajustes → Tu previsión** ofrece el modelo principal mediante opciones directas.
+Se recuerda junto al modo automático en almacenamiento local del navegador,
+sin coordenadas ni credenciales. Si la fuente preferida no está disponible se
+avisa y se utiliza una disponible; la portada siempre indica la fuente efectiva.
+
 ## Configuración privada del acceso
 
 Después de publicar HTTPS, ejecuta `python -m climate_app.auth verify-https` en el
@@ -65,8 +85,17 @@ caracteres y guarda únicamente PBKDF2-SHA256 con sal aleatoria y 600.000 iterac
 No imprime contraseñas ni hashes. Se admiten también secretos de runtime:
 `CLIMATE_OWNER_USERNAME` y `CLIMATE_OWNER_PASSWORD_HASH`.
 
-La sesión pertenece a una conexión Streamlit y caduca a las 24 horas. Cambiar la
-credencial invalida las sesiones existentes. Se permiten cinco intentos por
+El formulario ofrece **Mantener sesión en este dispositivo**, activado inicialmente.
+Recuerda el acceso durante 30 días mediante una cookie opaca `__Host-climateapp_owner`,
+Secure, HttpOnly y SameSite=Strict. Solo se almacena su hash en la tabla aditiva
+`owner_browser_tokens` del SQLite existente, incluida en sus snapshots y backup
+integral. La restauración aislada se comprueba con sesiones sintéticas; no se
+exporta la base ni las credenciales de producción para probarla. Los canjes y
+pruebas entre navegador y sesión web son de un solo uso y caducan en 90/60 segundos.
+Las rutas conservan XSRF y validan origen; no transmiten el token de cookie a JavaScript.
+Cerrar sesión revoca el acceso recordado y avisa a las otras pestañas.
+Sin marcar la opción, la sesión solo pertenece a la conexión web y caduca a las
+24 horas. Cambiar la credencial invalida las sesiones existentes. Se permiten cinco intentos por
 ventana de 15 minutos mediante un contador persistente y atómico.
 No hay contraseña por defecto ni registro abierto. Sin cuenta configurada,
 WeatherNext y el consenso privado permanecen ocultos.
@@ -82,8 +111,10 @@ propietario. Se pueden mantener hasta diez lugares activos dentro de las cuotas.
 - Fallos: reintento desde 45 minutos después, conservando el snapshot anterior.
 - Máximo de 10 lugares activos y presupuesto persistente de 8.000 unidades
   Open-Meteo/día, reservando 32 por petición. El límite publicado es 10.000.
-- Las visitas leen SQLite; no disparan consultas meteorológicas. La búsqueda de
-  lugares tiene caché y comparte el presupuesto. No hay paso automático a planes de pago.
+- Las visitas a lugares guardados leen SQLite; no disparan consultas meteorológicas.
+  Ubicación actual consulta bajo demanda con caché de sesión y el mismo límite.
+  La búsqueda de lugares tiene caché y comparte el presupuesto. No hay paso
+  automático a planes de pago.
 
 Se respeta la [licencia gratuita no comercial de Open-Meteo](https://open-meteo.com/en/terms).
 MET Norway recibe identificación User-Agent con el repositorio; se respetan sus
