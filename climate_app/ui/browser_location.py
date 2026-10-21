@@ -1,6 +1,7 @@
-"""Native browser permission bridge. No coordinates in URLs or browser storage."""
+"""Native browser permission bridge. Precise coordinates stay inside the browser."""
 from pathlib import Path
 import hashlib
+from dataclasses import replace
 
 import streamlit as st
 from streamlit.components.v1 import declare_component
@@ -24,6 +25,7 @@ def sync_browser_location():
     restore_owner_session()
     state = st.session_state
     event = _bridge(automatic=state.get("selected_forecast_location") == AUTOMATIC,
+                    place_id=state.get("selected_forecast_location") if state.get("selected_forecast_location") != AUTOMATIC else None,
                     weather_view=state.get("main_view", "🌤️ Previsión") in ("🌤️ Previsión", "🎯 Aciertos"),
                     model=state.get("preferred_forecast_provider", "auto"),
                     restore=not state.get("browser_forecast_preferences_loaded", False),
@@ -34,12 +36,15 @@ def sync_browser_location():
     if not isinstance(events, list):
         return
     seen = state.setdefault("browser_processed_events", [])
+    loaded = state.get("browser_forecast_preferences_loaded", False)
     for item in events[-16:]:
         if not isinstance(item, dict) or not isinstance(item.get("nonce"), str) or item["nonce"] in seen:
             continue
         seen.append(item["nonce"])
         del seen[:-32]
         _process_event(item, state)
+    if not loaded and state.get("browser_forecast_preferences_loaded"):
+        st.rerun()  # Send the restored selection back before the browser saves defaults.
 
 
 def _process_event(event, state):
@@ -81,16 +86,32 @@ def _process_event(event, state):
             state["preferred_forecast_provider"] = model
         if event.get("automatic") is True:
             state["selected_forecast_location"] = AUTOMATIC
+            state["forecast_location"] = AUTOMATIC
+        else:
+            from climate_app.forecast.store import Store
+            place_id = event.get("place_id")
+            if isinstance(place_id, str) and place_id in {loc.id for loc in Store().locations()}:
+                state["selected_forecast_location"] = place_id
+                state["forecast_location"] = place_id
     if state.get("selected_forecast_location") != AUTOMATIC:
         return  # A late GPS reply must never undo a manual place selection.
     if event.get("kind") == "position":
         try:
             location = device_location(event)
+            previous = state.get("device_location")
+            if previous and previous.id == location.id:
+                location = replace(location, name=previous.name)
             state["device_location"] = location
             state["device_location_error"] = None
         except ValueError as exc:
             state.pop("device_location", None)
             state["device_location_error"] = str(exc)
+    elif event.get("kind") == "place_name":
+        location = state.get("device_location")
+        name = event.get("name")
+        if (location and event.get("latitude") == location.latitude and event.get("longitude") == location.longitude
+                and isinstance(name, str) and 0 < len(name.strip()) <= 120 and not any(ord(c) < 32 for c in name)):
+            state["device_location"] = replace(location, name=name.strip())
     elif event.get("kind") == "error":
         state.pop("device_location", None)
         state["device_location_error"] = {

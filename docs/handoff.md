@@ -2,6 +2,14 @@
 
 ## Estado útil
 
+- Pendiente de publicar: `codex/location-memory-and-deletion`. El navegador recuerda
+  el lugar guardado elegido; la ubicación automática muestra el nombre resuelto
+  con BigDataCloud desde coordenadas aproximadas recién obtenidas. Lugares quitados
+  permite borrado definitivo con sesión personal y segunda confirmación; transacción
+  por ID, protección frente a respuestas tardías y favoritos iniciales sin resurrección.
+  77 pruebas Python y 15 Node correctas. Revisión local ficticia: selección conservada
+  en pestaña nueva y aviso de borrado en móvil. No se han leído ni eliminado datos de
+  producción. Sin push ni despliegue solicitados para esta petición.
 - Producción verificada: `0ce4b74d9ae44a4ebdcb7db465fe2917ff1055b5`.
   Corrección de Ajustes aprobada y despliegue solicitado por Iván el 21/10; publicado mediante
   el fallback manual de Coolify. CI: 71 pruebas Python + 12 Node correctas.

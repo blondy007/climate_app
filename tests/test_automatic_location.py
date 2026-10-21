@@ -61,8 +61,9 @@ class AutomaticLocationTests(unittest.TestCase):
             self.assertTrue(frame.equals(again))
             self.assertEqual(len(store.locations()), 2)
             with store.connect() as connection:
-                for table in ("runs", "points", "state"):
+                for table in ("runs", "points"):
                     self.assertEqual(connection.execute("SELECT count(*) FROM " + table).fetchone()[0], 0)
+                self.assertEqual(connection.execute("SELECT count(*) FROM state WHERE key!='locations_seeded'").fetchone()[0], 0)
                 self.assertEqual(connection.execute("SELECT used FROM budget WHERE service='open-meteo'").fetchone()[0], 96)
 
     def test_partial_provider_failure_preserves_available_sources_and_finite_consensus(self):

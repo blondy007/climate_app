@@ -16,7 +16,7 @@ from climate_app.forecast.domain import HORIZONS, LABELS, instant, utcnow
 from climate_app.forecast.providers import geocode
 from climate_app.forecast.store import Store
 from climate_app.forecast.thermal import METHOD, SOURCE, with_feels_like
-from climate_app.auth import owner_login
+from climate_app.auth import authenticated, owner_login
 from climate_app.ui.design import section, hero_html, weather_details, hourly_strip, daily_cards, day_label, empty_state, text
 from climate_app.ui.appearance import PALETTES, appearance_controls, palette
 from climate_app.ui.browser_location import PREFERENCES, choose_provider
@@ -182,6 +182,28 @@ def location_controls(store):
                             st.rerun()
                         except ValueError as exc:
                             st.warning(str(exc))
+                    if st.button("Borrar definitivamente", key=f"delete_place_{location.id}"):
+                        st.session_state["delete_place_pending"] = location.id
+                    if st.session_state.get("delete_place_pending") == location.id:
+                        st.warning(f"Se borrará definitivamente {location.display_name} ({location.latitude:.4f}, {location.longitude:.4f}), junto con sus previsiones, observaciones y alias. No se puede deshacer.")
+                        if not authenticated():
+                            st.info("Inicia tu sesión personal en Tu cuenta para confirmar el borrado definitivo.")
+                        elif st.button("Confirmar borrado definitivo", key=f"confirm_delete_place_{location.id}"):
+                            try:
+                                store.delete_location(location.id)
+                                st.session_state.pop("delete_place_pending", None)
+                                if st.session_state.get("removed_place", {}).get("id") == location.id:
+                                    st.session_state.pop("removed_place", None)
+                                if st.session_state.get("selected_forecast_location") == location.id:
+                                    st.session_state.pop("selected_forecast_location", None)
+                                    st.session_state.pop("forecast_location", None)
+                                st.session_state["place_notice"] = "Lugar borrado definitivamente. Los demás lugares se mantienen."
+                                st.rerun()
+                            except ValueError as exc:
+                                st.warning(str(exc))
+                        if st.button("Cancelar borrado", key=f"cancel_delete_place_{location.id}"):
+                            st.session_state.pop("delete_place_pending", None)
+                            st.rerun()
             if len(locations) >= 10:
                 st.caption("Quita un lugar activo antes de recuperar otro: el máximo es 10.")
 
@@ -445,6 +467,9 @@ def render_forecast_dashboard(evaluation=False):
     picker.markdown('<span class="location-toolbar-anchor"></span>', unsafe_allow_html=True)
     labels = location_labels(locations)
     labels[AUTOMATIC] = "Ubicación actual"
+    device = st.session_state.get("device_location")
+    if device and device.name != "Ubicación actual":
+        labels[AUTOMATIC] += " · " + device.name
     def choose_location():
         st.session_state["selected_forecast_location"] = st.session_state["forecast_location"]
         st.session_state["browser_forecast_preferences_loaded"] = True
@@ -479,6 +504,7 @@ def render_forecast_dashboard(evaluation=False):
             st.button("Volver a localizar", key="refresh_device_location", on_click=refresh_device_location)
         else:
             forecast_view(store, location, frame)
+            st.caption("Nombre del lugar: [BigDataCloud](https://www.bigdatacloud.com/). Se consulta desde tu navegador con la ubicación aproximada; si no está disponible, se mantiene la previsión.")
         return
     location = lookup[location_id]
     if evaluation:

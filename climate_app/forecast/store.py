@@ -85,13 +85,19 @@ class Store:
             conn.close()
 
     def seed(self):
-        # Inactive favorites stay inactive across restarts.
-        if self.locations(include_inactive=True):
-            return
-        self.add_location("Los Narejos · Los Alcázares", 37.758, -0.837, "Europe/Madrid",
-                          "08433", "San Javier")
-        self.add_location("Torrejón de Ardoz", 40.4594, -3.4697, "Europe/Madrid",
-                          "08227", "Madrid / Torrejón")
+        # Remember initialization even after the last favorite is permanently deleted.
+        with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            if conn.execute("SELECT 1 FROM state WHERE key='locations_seeded'").fetchone():
+                return
+            if not conn.execute("SELECT 1 FROM locations LIMIT 1").fetchone():
+                for name, lat, lon, station, station_name in (
+                    ("Los Narejos · Los Alcázares", 37.758, -.837, "08433", "San Javier"),
+                    ("Torrejón de Ardoz", 40.4594, -3.4697, "08227", "Madrid / Torrejón")):
+                    identity = hashlib.sha256(f"{lat:.4f},{lon:.4f}".encode()).hexdigest()[:16]
+                    conn.execute("INSERT INTO locations VALUES (?,?,?,?,?,?,?,?,1)",
+                                 (identity, name, lat, lon, "Europe/Madrid", station, station_name, None))
+            conn.execute("INSERT INTO state VALUES ('locations_seeded','true',?)", (stamp(utcnow()),))
 
     def locations(self, include_inactive=False) -> list[Location]:
         with self.connect() as conn:
@@ -139,12 +145,32 @@ class Store:
         with self.connect() as conn:
             conn.execute("UPDATE locations SET active=0 WHERE id=?", (location_id,))
 
+    def delete_location(self, location_id):
+        """Delete one inactive favorite and its archive in a single transaction."""
+        with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT active FROM locations WHERE id=?", (location_id,)).fetchone()
+            if row is None or row[0]:
+                raise ValueError("Solo puedes borrar definitivamente un lugar quitado que siga disponible")
+            conn.execute("DELETE FROM point_sources WHERE run_id IN (SELECT id FROM runs WHERE location_id=?)", (location_id,))
+            conn.execute("DELETE FROM points WHERE run_id IN (SELECT id FROM runs WHERE location_id=?)", (location_id,))
+            conn.execute("DELETE FROM runs WHERE location_id=?", (location_id,))
+            conn.execute("DELETE FROM observations WHERE location_id=?", (location_id,))
+            conn.execute("DELETE FROM location_aliases WHERE location_id=?", (location_id,))
+            conn.execute("DELETE FROM state WHERE key LIKE ? OR key IN (?,?,?,?)",
+                         (f"task:{location_id}:%", *[f"http:{p}:{location_id}" for p in ("ecmwf", "icon", "gfs", "metno")]))
+            conn.execute("DELETE FROM locations WHERE id=?", (location_id,))
+            conn.execute("INSERT OR IGNORE INTO state VALUES ('locations_seeded','true',?)", (stamp(utcnow()),))
+
     def save_forecast(self, location_id: str, forecast: Forecast):
         # Immutable snapshots: duplicates cannot rewrite an already collected run.
         points = [p for p in forecast.points if stamp(p["valid_time"]) > stamp(forecast.fetched_at)]
         if not points:
             raise ValueError("El proveedor no devolvió previsiones futuras")
         with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            if not conn.execute("SELECT 1 FROM locations WHERE id=?", (location_id,)).fetchone():
+                return  # A collector reply may arrive after an explicit permanent deletion.
             cursor = conn.execute("""INSERT OR IGNORE INTO runs
                 (location_id,provider,fetched_at,init_time,metadata) VALUES (?,?,?,?,?)""",
                 (location_id, forecast.provider, stamp(forecast.fetched_at),
@@ -188,6 +214,9 @@ class Store:
     def save_observations(self, location_id, station_id, points, fetched_at=None):
         fetched = stamp(fetched_at or utcnow())
         with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            if not conn.execute("SELECT 1 FROM locations WHERE id=?", (location_id,)).fetchone():
+                return
             conn.executemany("""INSERT INTO observations VALUES (?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(location_id,valid_time,station_id) DO UPDATE SET
                 fetched_at=excluded.fetched_at,temperature=excluded.temperature,humidity=excluded.humidity,
@@ -211,6 +240,13 @@ class Store:
 
     def set_state(self, key, value):
         with self.connect() as conn:
+            parts = key.split(":")
+            location_id = (parts[1] if len(parts) >= 3 and parts[0] == "task" else
+                           parts[2] if len(parts) == 3 and parts[0] == "http" and parts[1] in ("ecmwf", "icon", "gfs", "metno") else None)
+            if location_id:
+                conn.execute("BEGIN IMMEDIATE")
+                if not conn.execute("SELECT 1 FROM locations WHERE id=?", (location_id,)).fetchone():
+                    return
             conn.execute("INSERT OR REPLACE INTO state VALUES (?,?,?)",
                          (key, json.dumps(value, ensure_ascii=False), stamp(utcnow())))
 

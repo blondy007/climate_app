@@ -150,6 +150,22 @@ La evaluación lee el archivo sin repetir el JSON de cada ejecución por cada ho
 
 ## Backup, restauración y despliegue
 
+La ubicación automática resuelve el nombre con la API gratuita de
+[BigDataCloud](https://www.bigdatacloud.com/geocoding-apis/free-reverse-geocode-to-city-api),
+sin clave, desde el navegador y solo para su posición recién obtenida por GPS,
+redondeada a dos decimales. No se consultan coordenadas guardadas ni ubicaciones
+por IP. Caché solo en memoria de la pestaña, máximo 16 entradas y un día; errores
+durante cinco minutos. La consulta tiene un timeout de cinco segundos y su fallo
+no impide consultar el tiempo.
+
+El borrado definitivo solo acepta lugares inactivos y la interfaz exige sesión
+del propietario y confirmación. Una transacción elimina lugar, alias, ejecuciones,
+puntos, procedencia, observaciones y estado propio del recolector/HTTP. Las
+respuestas tardías no pueden recrear esos datos. La inicialización se marca en
+`state.locations_seeded`: borrar el último lugar no repone los favoritos iniciales.
+Los backups anteriores siguen conteniendo el archivo previo al borrado; restaurar
+uno de ellos recupera su estado de entonces.
+
 El volumen ya se incluye en `climate-app-data.tar.gz` del backup integral.
 Para recuperar SQLite utiliza `forecasts-backup.sqlite3`, la copia consistente
 del archivo, y no la base viva que puede haberse copiado durante una escritura.

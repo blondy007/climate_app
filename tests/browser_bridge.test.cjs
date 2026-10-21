@@ -19,7 +19,8 @@ function harness({saved, denied = false, secure = true, deferred = false, respon
     AbortController, setTimeout, clearTimeout,
     fetch: async (url, options) => {
       requests.push({url, options});
-      const data = response ? await response(url, options) : {authenticated: false, csrf: 'fixture-csrf'};
+      const data = response ? await response(url, options) : url.startsWith('https://api.bigdatacloud.net/')
+        ? {locality: 'Los Narejos', city: 'Los Alcázares'} : {authenticated: false, csrf: 'fixture-csrf'};
       return {ok: true, json: async () => data};
     },
     navigator: {geolocation: {getCurrentPosition: (success, error) => {
@@ -59,7 +60,7 @@ test('coordinates are coarse before transmission and never enter storage', () =>
   assert.equal(h.values()[0].longitude, -.85);
   assert.equal(h.values()[0].kind, 'position');
   const saved = JSON.parse([...h.storage.values()][0]);
-  assert.deepEqual(Object.keys(saved).sort(), ['automatic', 'model']);
+  assert.deepEqual(Object.keys(saved).sort(), ['automatic', 'model', 'place_id']);
 });
 test('rerenders do not repeatedly fetch GPS; visible automatic mode refreshes after five minutes', () => {
   const h = harness(); h.render(active); h.render({...active, model: 'icon'});
@@ -85,6 +86,53 @@ test('insecure contexts fail closed and unrelated messages are ignored', () => {
 });
 
 const flush = () => new Promise(resolve => setImmediate(resolve));
+
+test('saved place survives a fresh session without an early default overwrite or GPS request', () => {
+  const id = '0123456789abcdef';
+  const h = harness({saved: {automatic: false, place_id: id, model: 'icon'}});
+  h.render({...active, automatic: false, restore: true});
+  assert.equal(h.values()[0].place_id, id);
+  h.render({...active, automatic: false, restore: true});
+  assert.equal(JSON.parse([...h.storage.values()][0]).place_id, id);
+  h.render({...active, automatic: false, restore: false, place_id: id, model: 'icon'});
+  const reopened = harness({saved: JSON.parse([...h.storage.values()][0])});
+  reopened.render({...active, automatic: false, restore: true});
+  assert.equal(reopened.values()[0].place_id, id);
+  assert.equal(reopened.calls(), 0);
+});
+
+test('automatic place name uses coarse coordinates, follows the position and stays out of storage', async () => {
+  const h = harness(); h.render(active); await flush();
+  const values = h.values();
+  assert.ok(values.findIndex(e => e.kind === 'position') < values.findIndex(e => e.kind === 'place_name'));
+  assert.equal(values.find(e => e.kind === 'place_name').name, 'Los Narejos · Los Alcázares');
+  const request = h.requests.find(r => r.url.includes('reverse-geocode-client'));
+  assert.match(request.url, /latitude=37\.74&longitude=-0\.85&/);
+  assert.equal(request.options.credentials, 'omit');
+  const stored = [...h.storage.values()].join();
+  assert.ok(!stored.includes('37.74') && !stored.includes('Narejos'));
+  h.advance(300000); await flush();
+  assert.equal(h.requests.filter(r => r.url.includes('reverse-geocode-client')).length, 1);
+});
+
+test('failed or late place names do not replace the selected saved place', async () => {
+  let finish;
+  const h = harness({response: url => url.startsWith('https:') ? new Promise(resolve => finish = resolve)
+    : {authenticated: false, csrf: 'fixture-csrf'}});
+  h.render(active);
+  h.render({...active, automatic: false, place_id: '0123456789abcdef'});
+  finish({locality: 'Late city'}); await flush();
+  assert.equal(h.values().filter(e => e.kind === 'place_name').length, 0);
+  const failed = harness({response: async url => {if (url.startsWith('https:')) throw new Error('offline');
+    return {authenticated: false, csrf: 'fixture-csrf'};}});
+  failed.render(active); await flush();
+  assert.ok(failed.values().some(e => e.kind === 'position'));
+  assert.ok(!failed.values().some(e => e.kind === 'place_name'));
+  const ip = harness({response: async url => url.startsWith('https:')
+    ? {lookupSource: 'ipGeolocation', city: 'IP city'} : {authenticated: false, csrf: 'fixture-csrf'}});
+  ip.render(active); await flush();
+  assert.ok(!ip.values().some(e => e.kind === 'place_name'));
+});
 test('concurrent preference and auth replies are delivered together without storing credentials', async () => {
   const h = harness({saved: {model: 'icon'}, response: () => ({authenticated: true, proof: 'one-use-proof'})});
   h.render({...active, automatic: false, restore: true});

@@ -120,3 +120,15 @@ de lugares tienen un solo separador y botones de ancho acotado. Sus reglas CSS
 se limitan a contenedores con marcadores propios para no añadir bordes o relleno
 a columnas y ancestros. Los contadores de texto quedan bajo el campo, sin tapar
 el icono de contraseña, y los controles numéricos comparten un único contorno.
+
+El navegador recuerda el identificador del lugar guardado seleccionado, junto con
+el modelo y la preferencia de ubicación automática. Al reabrir se valida que el
+lugar siga activo antes de seleccionarlo. Las coordenadas no se guardan en el
+almacenamiento del navegador. La ubicación automática muestra el nombre obtenido
+por geocodificación inversa en la pestaña y en el widget; si falla, conserva la
+previsión con la etiqueta genérica.
+
+En Lugares quitados se puede recuperar o borrar definitivamente un lugar. El
+borrado muestra nombre y coordenadas para distinguir duplicados y requiere sesión
+personal y una segunda confirmación. Elimina el archivo del lugar elegido; quitar
+un lugar continúa siendo reversible. Los controles conservan ancho legible en móvil.

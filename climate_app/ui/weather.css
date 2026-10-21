@@ -196,7 +196,6 @@ input::placeholder,textarea::placeholder { color:var(--muted); opacity:1; }
 }
 @media(max-width:640px) {
  [data-testid="stVerticalBlock"]:has(>.element-container .place-row-anchor)>[data-testid="stHorizontalBlock"] { gap:12px; }
- [data-testid="stVerticalBlock"]:has(>.element-container .place-row-anchor)>[data-testid="stHorizontalBlock"]>[data-testid="column"]:last-child { flex-basis:90px!important; min-width:90px!important; width:90px!important; }
 }
 /* Saved places are native keyboard-accessible tabs, scrollable by touch. */
 .element-container:has(.location-toolbar-anchor) { display:none; }
