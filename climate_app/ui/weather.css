@@ -43,6 +43,12 @@ h1,h2,h3 { letter-spacing:-.035em; }
 [data-testid="stMetricValue"] { font-size:30px; color:var(--ink); letter-spacing:-1px; }
 [data-testid="stPlotlyChart"] { overflow:hidden; border:0; background:transparent; border-radius:0; padding:0; }
 [data-testid="stDataFrame"],[data-testid="stTable"] { background:var(--surface); border-radius:14px; overflow:hidden; }
+/* Static tables use DOM cells, rather than the dataframe's canvas. Set their
+   colors explicitly so Streamlit's light-theme text cannot survive in dark mode. */
+[data-testid="stTable"] { overflow-x:auto; }
+[data-testid="stTable"] table { color:var(--ink); background:var(--surface); }
+[data-testid="stTable"] th,[data-testid="stTable"] td { color:var(--ink); border-color:var(--line); }
+[data-testid="stTable"] thead th { color:var(--muted); }
 /* Streamlit paints its virtualized table on canvas; keep large archives
    virtualized rather than generating a per-cell Pandas Styler payload. */
 [data-testid="stDataFrame"] canvas { filter:var(--table-filter,none); }

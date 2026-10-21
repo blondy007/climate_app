@@ -69,6 +69,11 @@ la sensación no se presenta como una medición directa. Se deriva al consultar,
 sin migraciones ni cambios de datos archivados, cuotas o consultas externas.
 El análisis histórico original conserva sus índices de frío/calor existentes.
 
+La tabla estática de indicadores del histórico aplica la paleta activa también
+a sus celdas y cabeceras. No usa el filtro del canvas de los archivos grandes:
+texto, fondo y separadores siguen los modos claro, oscuro y automático. Si no
+cabe en móvil, se desplaza dentro de su propio contenedor.
+
 Streamlit se actualiza de 1.37.0 a 1.38.0 para corregir el fallo de su árbol de
 bloques que podía dejar la pantalla en blanco al cambiar la vista
 ([corrección oficial](https://github.com/streamlit/streamlit/pull/9276)).
