@@ -2,8 +2,8 @@
 
 ## Estado útil
 
-- Producción verificada: `5c098b4b9fd54fd53fe9c8880ba35d38082b33d6`.
-  Rediseño aprobado y despliegue solicitado por Iván el 21/10; publicado mediante
+- Producción verificada: `0ce4b74d9ae44a4ebdcb7db465fe2917ff1055b5`.
+  Corrección de Ajustes aprobada y despliegue solicitado por Iván el 21/10; publicado mediante
   el fallback manual de Coolify. CI: 71 pruebas Python + 12 Node correctas.
 - Histórico: tabla corregida en claro/oscuro; comprobación pública a 320/390 px,
   sin scroll horizontal de página. Cabecera y selección de lugares también resueltas.
@@ -17,11 +17,15 @@
   Vista local ficticia comprobada a 320/390 px en claro/oscuro y escritorio.
   Aceptación pública móvil a 390 px; captura: `test-results/current-widget-production.png`.
   Diseño en `docs/design.md`. No hay cambios pendientes de este rediseño.
-- Corrección local de Ajustes en `codex/settings-desktop-layout`, sin desplegar:
+- Corrección de Ajustes publicada desde `codex/settings-desktop-layout`:
   columnas alineadas en PC, modelos en cuadrícula, filas de lugares sin bordes
   duplicados, fuentes bajo su título y formularios sin solapamientos. Cuatro
   pruebas focalizadas correctas; revisión local ficticia en escritorio 1024/1440 px
-  y móvil 320 px oscuro, sin desbordamiento. Captura: `test-results/settings-desktop-light.png`.
+  y móvil 320 px oscuro, sin desbordamiento. Aceptación pública de PC a 1440 px,
+  imagen exacta healthy, HTTPS/health 200, logs de arranque sin errores y Kuma 5
+  Funcional. Captura: `test-results/settings-production-desktop.png`.
+  Registro de infraestructura guardado localmente en `1fbc973`; su push a `master`
+  fue rechazado por revisión automática y se pidió autorización explícita para publicarlo.
 
 ## Preferencias y límites
 
