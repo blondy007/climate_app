@@ -61,9 +61,10 @@ No ejecutar dos escritores del mismo backfill. El colector tiene bloqueo de
 escritor propio. El replay puede ejecutarse sin red sobre recortes ya guardados;
 solo modifica sus tres ficheros `retrospective-*.json`.
 
-## Experimento activo en Oracle
+## Experimento en Oracle (cerrado)
 
-- Contenedor: `climate-radar-capture-20261020`.
+- Contenedor: `climate-radar-capture-20261020`, terminado con salida 0 el 24/10/2026 a las 18:05:20 UTC por `download_cap`.
+- [Informe final y decisión de no integrar esta versión](results/2026-10-26-final.md). No reanudar ni ampliar esta campaña.
 - Dependencias: imagen `climate-radar-lab:c852a5f125e3`.
 - Código de captura congelado: `/home/ubuntu/climate-radar-lab/code-b107f760a60b/research`,
   huella `b107f760a60b802d4de998895a91c151c25180dc1185a2e455fb21b24ff9aa0b`.
@@ -92,10 +93,9 @@ solo modifica sus tres ficheros `retrospective-*.json`.
 - Las salidas cada 5 minutos son experimentales; solo los objetivos que coinciden
   con un RATE cada 15 minutos tienen verificación directa. Las métricas del informe
   de directo se deben volver a comprobar sobre pares idénticos antes de concluir.
-- Heartbeat de Codex `validar-lluvia-de-climateapp`: dos revisiones diarias,
-  14 ejecuciones como máximo; silencioso sin novedades relevantes. La captura
-  funciona en la VPS aunque el escritorio esté cerrado; la revisión local depende
-  de que el entorno de Codex esté disponible.
+- Heartbeat `validar-lluvia-de-climateapp` retirado tras la evaluación final del
+  26/10. La campaña está cerrada: no reanudar automáticamente. Los datos y
+  predicciones originales se conservan en el volumen respaldado.
 
 Para comprobar sin modificar la captura:
 
