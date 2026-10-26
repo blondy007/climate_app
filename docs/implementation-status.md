@@ -6,7 +6,9 @@ WeatherNext 3 y fuentes gratuitas, ubicaciones ampliables, archivo automático,
 comparación climatológica, evaluación contra estaciones y consenso ponderado.
 
 El objetivo NO está terminado hasta verificar WeatherNext 3 con datos reales.
-El propietario debe solicitar la autorización de Google. No activar billing,
+La autorización de Google está aprobada por correo (revisión 26/10/2026);
+faltan el proyecto/dataset sin facturación y la autenticación privada del runtime.
+El adaptador no se considera verificado por recibir la aprobación. No activar billing,
 pruebas de pago, recursos OCI ni APIs comerciales.
 
 ## Implementación prevista

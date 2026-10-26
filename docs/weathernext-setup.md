@@ -3,6 +3,41 @@
 El adaptador está implementado. No se considera finalizado hasta comprobar datos
 reales en Oracle con una identidad autorizada por Google y sin facturación.
 
+## Estado revisado · 26/10/2026
+
+Google ha confirmado por correo la aprobación de la solicitud del propietario.
+La aprobación se aplica a la cuenta indicada en el formulario y a las tres vías
+de acceso (BigQuery, Earth Engine y Cloud Storage); no entrega una clave API ni
+autoriza automáticamente otras identidades. No es necesario repetir la solicitud.
+
+El runtime aún no tiene proyecto/dataset de WeatherNext configurados ni ruta de
+credenciales ADC. Se comprobaron solo esas banderas, sin leer credenciales o
+SQLite de producción ni ejecutar consultas Google. El proyecto que estaba abierto
+en la consola tiene una cuenta de facturación de prueba vinculada: no usarlo para
+esta integración de coste cero ni confundir un coste actual de 0 € con billing
+deshabilitado. Preparar un proyecto dedicado sin cuenta de facturación.
+
+Ruta que aprovecha el adaptador existente:
+
+1. Usar la cuenta aprobada para acceder al proyecto dedicado de BigQuery sandbox.
+2. Enlazar el dataset de [Analytics Hub desde la guía oficial de BigQuery](https://developers.google.com/weathernext/guides/bigquery).
+3. Preparar autenticación privada para el recolector con una identidad aprobada;
+   revisar cualquier autorización OAuth o nueva cuenta de servicio antes de concederla.
+4. Configurar las variables indicadas abajo y comprobar billing deshabilitado,
+   acceso a ambas tablas y dry run. Solo entonces probar una consulta acotada con
+   datos reales y habilitar la recopilación; la vista sigue siendo personal.
+
+Alternativa documentada si el enlace de BigQuery no funciona sin billing:
+el [bucket de estadísticas Zarr](https://developers.google.com/weathernext/guides/gcs)
+`weathernext3_statistics_spatial` tiene Requester Pays desactivado y no requiere
+cabeceras de facturación. Esta vía necesitaría un adaptador adicional y comprobar
+acceso y volumen de descarga antes de activarla. No usar el bucket de ensemble
+completo `weathernext3_spatial`, que sí tiene Requester Pays activado.
+
+La aprobación no habilita WeatherNext en la aplicación por sí sola. Esta revisión
+no ha creado recursos, aceptado acuerdos nuevos, concedido permisos ni activado
+facturación o consultas de datos reales.
+
 ## Solicitud del propietario
 
 1. Abre el [formulario oficial](https://docs.google.com/forms/d/e/1FAIpQLSeCf1JY8G78UDWzbm0ly9kJxfSjUIJT5WyMR_HiNqCm-IHIBg/viewform).

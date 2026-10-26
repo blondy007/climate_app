@@ -1,29 +1,26 @@
-# Continuidad · 21 de octubre de 2026
+# Continuidad · 26 de octubre de 2026
 
 ## Estado útil
 
-- Cambio local listo, sin desplegar: `codex/settings-section-order`. Columna izquierda
-  Apariencia → Tu cuenta → Tus lugares; derecha Tu previsión → fuentes. Móvil y DOM
-  siguen ese mismo orden. Añadir lugar ya no duplica el separador del último lugar.
-  Dos AppTests de alias/selección/recuperación y acceso personal correctos; escritorio
-  a 1280 px y móvil a 390 px sin desbordamiento, borde superior de Añadir lugar 0 px.
-  Capturas locales `test-results/settings-section-order-desktop.png` y
-  `test-results/settings-section-order-mobile.png`. Esta petición no incluye despliegue.
-- Producción actual: `b4a8fda4670eab736ca1512b273a4edc39d0a3ce`, desplegada por petición
-  de Iván desde `codex/settings-independent-columns`. Actions 39655736686 correcto:
-  84 Python + 16 Node y disparador API. Imagen exacta running/healthy, HTTPS/health
-  200, arranque limpio, Kuma 5 Up, volumen y binding conservados. Rollback: `11cf633`.
-  Ajustes usa columnas con alturas independientes en escritorio: lugares sigue a
-  apariencia sin esperar a previsión; cuenta sigue a previsión. Se mantiene el orden
-  móvil/DOM y el ancla visible de Tus lugares. Verificado a 390/900/901/1280 px,
-  sin desbordamiento, con formularios abiertos y claro/oscuro. Dos AppTests de alias,
-  selección, recuperación y acceso personal correctos. Capturas locales:
-  `test-results/settings-independent-columns-desktop.png` y `settings-independent-columns-mobile.png`.
-  Aceptación pública de escritorio a 1280 px: contenedores de apariencia/lugares
-  contiguos y sin desbordamiento. Evidencia: `test-results/settings-independent-columns-production.png`.
-  Registro canónico publicado en oracle-vps-infra master como `3fd2e27`. Sin tareas
-  pendientes de este despliegue; la interrupción por cuota ocurrió después del push
-  y no hizo falta volver a desplegar.
+- WeatherNext: correo de aprobación confirmado el 26/10/2026. La cuenta del
+  propietario ya tiene acceso concedido por Google; no se recibió una API key.
+  Runtime comprobado sin leer secretos/SQLite: WeatherNext sin configurar y sin
+  ruta ADC. El proyecto abierto en Google Cloud tiene cuenta de facturación de
+  prueba vinculada; usar otro dedicado sin billing. No se cambiaron permisos,
+  credenciales, recursos ni billing y no se consultaron datos Google. Integración
+  existente por BigQuery, pendiente dataset enlazado e identidad aprobada. Pasos
+  y alternativa GCS statistics con Requester Pays OFF en docs/weathernext-setup.md.
+  Revisión solicitada, aún no se ha activado WeatherNext ni se ha validado dato real.
+- Producción actual: `08edaac75c1e9fa7c43dff1a126ebe60b11c1049`, desplegada por petición
+  de Iván desde `codex/settings-section-order`. Apariencia → Tu cuenta → Tus lugares
+  a la izquierda; previsión/fuentes a la derecha; orden móvil igual y un separador
+  antes de Añadir lugar. Actions 39657325068: 84 Python + 16 Node y disparador API
+  correctos. Verificado el 26/10: imagen exacta running/healthy, HTTPS/health 200,
+  logs acotados sin errores, Kuma 5 Up, volumen y binding conservados. Aceptación
+  pública: orden correcto, borde superior de Añadir lugar 0 px y sin desbordamiento.
+  Evidencia: test-results/settings-section-order-production.png. Rollback: b4a8fda.
+  Cierre del despliegue y aprobación WeatherNext publicados en oracle-vps-infra
+  master como `1f9d95d`. No hay tareas pendientes del despliegue de Ajustes.
 - Controles de lugares: `11cf633a1a3c8bf9f38c232ca1da32e3789874a5`, publicada por petición
   de Iván desde `codex/compact-place-controls`. Actions 39653861713: 84 Python + 16 Node
   correctas y disparador API correcto. Imagen exacta running/healthy, HTTPS/health 200,
@@ -37,7 +34,7 @@
   Evidencia: `test-results/compact-place-controls-production.png`. Registro canónico
   publicado como `8ea732d` en master de oracle-vps-infra (apps/climate-app.md e
   inventory/applications.yaml). Sin tareas pendientes de este despliegue.
-- Versión anterior / rollback: `083c25c6dba25827baccdf5a6a10a0f437bc4ad0`.
+- Referencia del arreglo de actualización: `083c25c6dba25827baccdf5a6a10a0f437bc4ad0`.
   Rama anterior `codex/manual-weather-refresh`. Despliegue y registro documental
   aprobados expresamente por Iván. Actions 39647808142: 83 Python + 16 Node correctas
   y disparador API correcto. Despliegue completamente automático, sin fallback.
