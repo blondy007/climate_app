@@ -1,0 +1,9 @@
+[Unit]
+Description=ClimateApp second radar trial - absolute deadline enforcement
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/ubuntu/climate-radar-lab/campaign-20261030/ops.py finish
+TimeoutStartSec=60
+UMask=0077

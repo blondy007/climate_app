@@ -1,0 +1,13 @@
+[Unit]
+Description=ClimateApp second radar trial - bounded source gate and start
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/ubuntu/climate-radar-lab/campaign-20261030/ops.py start
+TimeoutStartSec=210
+Nice=10
+IOSchedulingClass=idle
+UMask=0077

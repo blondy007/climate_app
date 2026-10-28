@@ -1,0 +1,11 @@
+[Unit]
+Description=ClimateApp radar trial deadline on 2 November only
+
+[Timer]
+OnCalendar=2026-11-02 11:00:00 UTC
+AccuracySec=1s
+Persistent=true
+Unit=climate-radar-20261030-stop.service
+
+[Install]
+WantedBy=timers.target
