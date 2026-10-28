@@ -278,7 +278,7 @@ def provider_status(store, location):
                          "Detalle": state.get("message", "")})
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
         st.caption("La recopilación funciona aunque no abras la web. Los modelos se consultan cada 3 horas; WeatherNext, cada hora cuando esté habilitado. Un fallo conserva los datos anteriores.")
-        st.markdown("WeatherNext 3 necesita [acceso aprobado por Google](https://developers.google.com/weathernext/guides/access-forecast). La versión completa permanece pendiente hasta verificar esa conexión.")
+        st.markdown("WeatherNext 3 requiere [acceso aprobado por Google](https://developers.google.com/weathernext/guides/access-forecast). Sus previsiones y el consenso que las incluye están disponibles solo en la sesión personal.")
         collector = store.state("collector", {})
         if collector.get("heartbeat"):
             age = (utcnow() - instant(collector["heartbeat"])).total_seconds() / 60
@@ -667,4 +667,4 @@ def render_settings():
                 st.caption("Los iconos resumen la nubosidad y precipitación disponibles; no sustituyen avisos oficiales. La temperatura destacada es una previsión de la próxima hora disponible, no una medición actual. Los datos ausentes se muestran con una raya.")
                 st.caption("Aplicación de uso personal y coste adicional 0 €. Las previsiones y observaciones se conservan automáticamente sin necesidad de visitar la web.")
     if private_view():
-        st.caption("Google BigQuery · © 2024-6 Google LLC, whose machine learning models were used to create the experimental data made available under the following licence terms https://storage.googleapis.com/weathernext-public/terms-of-use.pdf. This data is intended for experimental modelling only and is not intended, validated, or approved for real world use.")
+        st.caption("Google WeatherNext · © 2024-6 Google LLC, whose machine learning models were used to create the experimental data made available under the following licence terms https://storage.googleapis.com/weathernext-public/terms-of-use.pdf. This data is intended for experimental modelling only and is not intended, validated, or approved for real world use.")

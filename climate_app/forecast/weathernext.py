@@ -1,4 +1,4 @@
-"""WeatherNext 3 adapter. All query paths fail closed if billing is not disabled."""
+"""WeatherNext 3 adapters. Fail closed unless project billing is disabled."""
 from __future__ import annotations
 
 import math
@@ -11,12 +11,13 @@ from climate_app.forecast.domain import Forecast, ProviderError, finite, utcnow
 
 def settings():
     return {key: os.environ.get(key, "").strip() for key in (
-        "WEATHERNEXT_PROJECT", "WEATHERNEXT_DATASET", "WEATHERNEXT_LOCATION")}
+        "WEATHERNEXT_PROJECT", "WEATHERNEXT_DATASET", "WEATHERNEXT_LOCATION", "WEATHERNEXT_BACKEND")}
 
 
 def configured():
     config = settings()
-    return bool(config["WEATHERNEXT_PROJECT"] and config["WEATHERNEXT_DATASET"])
+    return bool(config["WEATHERNEXT_PROJECT"] and
+                (config["WEATHERNEXT_BACKEND"] == "earthengine" or config["WEATHERNEXT_DATASET"]))
 
 
 def require_unbilled(session, project: str):
@@ -123,7 +124,6 @@ def fetch_weathernext(location, store):
         raise ProviderError("WeatherNext 3 pendiente de acceso y configuración de Google")
     from google import auth
     from google.auth.transport.requests import AuthorizedSession
-    from google.cloud import bigquery
 
     config, now = settings(), utcnow()
     project = config["WEATHERNEXT_PROJECT"]
@@ -133,6 +133,13 @@ def fetch_weathernext(location, store):
         credentials, _ = auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
         with AuthorizedSession(credentials) as session:
             require_unbilled(session, project)
+            if config["WEATHERNEXT_BACKEND"] == "earthengine":
+                from climate_app.forecast.weathernext_ee import require_noncommercial, fetch_point
+                require_noncommercial(session, project)
+                return fetch_point(location, store, credentials, project, now)
+        if config["WEATHERNEXT_BACKEND"] not in ("", "bigquery"):
+            raise ProviderError("Backend WeatherNext desconocido")
+        from google.cloud import bigquery
         client = bigquery.Client(project=project, credentials=credentials,
                                  location=config["WEATHERNEXT_LOCATION"] or "US")
         parameters = [bigquery.ScalarQueryParameter("lat", "FLOAT64", location.latitude),
@@ -163,4 +170,4 @@ def fetch_weathernext(location, store):
         raise
     except Exception:
         # Google errors can include principal identifiers and credential paths.
-        raise ProviderError("WeatherNext no disponible: comprobar acceso, credenciales privadas, permisos y esquema BigQuery") from None
+        raise ProviderError("WeatherNext no disponible: comprobar acceso, credenciales privadas y configuración de Google") from None

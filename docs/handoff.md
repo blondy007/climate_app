@@ -10,15 +10,21 @@
   No se ejecutó ninguna consulta meteorológica BigQuery. GCS statistics accesible
   sin Requester Pays, pero cada chunk contiene un mapa mundial por variable/hora;
   no se descargaron chunks meteorológicos ni se implementó ese adaptador.
-  Earth Engine requiere registrar el proyecto para uso no comercial; se pidió al
-  propietario completar el cuestionario en Google Cloud. Es la siguiente vía a
-  probar; aún no hay adaptador Earth Engine ni previsión real validada.
+  El propietario completó el registro Earth Engine no comercial/Comunidad;
+  API confirma REGISTERED_NOT_COMMERCIALLY. Adaptador puntual implementado:
+  WEATHERNEXT_BACKEND=earthengine, exige billing false + registro no comercial,
+  cuota compartida 240 lecturas/día, conserva init/celdas por hora y malla. Assets
+  indexan system:time_start por init, por eso se usa end_time como hora válida.
+  Primera lectura real aislada de Los Narejos: 351 horas hasta 12/11 12:00 UTC,
+  inits 28/10 12/14 UTC; 90 pruebas Python + 16 Node pasan.
   Autorización vigente: copiar ADC a VPS, montar solo para ClimateApp, configurar
   WeatherNext y reiniciar para probarlo. Archivo preparado privadamente bajo
   `/data/coolify/applications/xk53thwe7wzp3wah1qxvttvg/secrets/google-adc.json`, root
   0600/directorio 0700; copia/restauración aislada idéntica y carpeta ya cubierta por
-  backup integral. Aún sin montar, sin variables runtime nuevas ni reinicio: evitar
-  activar el adaptador BigQuery que bloquearía todas las consultas.
+  backup integral. Montaje con destino /run/secrets/google-adc.json:ro y tres
+  variables solo runtime preparados en Coolify; todavía sin reinicio/publicación.
+  Siguiente paso autorizado: publicar adaptador y verificar RW=false, recopilación
+  real por lugar, aislamiento anónimo/personal y salud. No usar BigQuery.
   No desplegar cambios de interfaz ni tocar lluvia. Detalles en docs/weathernext-setup.md.
 - Producción actual: `08edaac75c1e9fa7c43dff1a126ebe60b11c1049`, desplegada por petición
   de Iván desde `codex/settings-section-order`. Apariencia → Tu cuenta → Tus lugares

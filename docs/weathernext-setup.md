@@ -28,20 +28,30 @@ Pays. Sin embargo, los chunks reales contienen un mapa mundial completo por
 variable/hora (1801 × 3600 y 3601 × 7200 floats). Seleccionar un punto no evita
 descargar el chunk entero; no se descargaron datos meteorológicos por esta vía.
 
-Siguiente vía: [Earth Engine](https://developers.google.com/weathernext/guides/earth-engine),
-con reducción en el servidor al punto solicitado. API habilitada, pero devuelve
-que el proyecto no está registrado. El propietario debe completar el
-[registro de uso no comercial](https://console.cloud.google.com/earth-engine/configuration?project=climateapp-weathernext)
-con su uso real. El nivel Community no exige billing; no seleccionar planes de pago.
-Después hay que implementar/verificar el adaptador; todavía no se ha validado
-ninguna previsión real.
+Vía implementada: [Earth Engine](https://developers.google.com/weathernext/guides/earth-engine),
+con reducción en el servidor al punto solicitado. El propietario completó el
+registro no comercial, nivel Comunidad; la API confirma
+`REGISTERED_NOT_COMMERCIALLY`. El adaptador exige ese estado y billing deshabilitado
+antes de cada lectura. Hay un límite compartido persistente de 240 lecturas por día;
+no se ejecutan consultas BigQuery ni exportaciones o descargas de mapas mundiales.
+
+Primera lectura real aislada de Los Narejos: 351 horas hasta 12/11/2026 12:00 UTC,
+inicializaciones nativas del 28/10 a las 12:00 y 14:00 UTC, celda superficial
+37.8/-0.8 y temperatura 37.75/-0.85. Temperatura p50/P10/P90 y rocío de la malla
+de 0.05°; viento, nubosidad y lluvia media horaria de 0.1°. Se conserva la última
+inicialización disponible por hora válida y por malla, sin interpolar ni inventar
+un horizonte completo cuando falten datos. Los assets reales indexan
+`system:time_start` por inicialización: el adaptador usa `end_time` como hora válida.
+90 pruebas Python y 16 Node correctas; pendiente aceptación desde Oracle.
 
 El propietario autorizó copiar ADC a Oracle, montaje exclusivo de ClimateApp,
 configuración y reinicio para probarlo. Archivo preparado en el host bajo
 `/data/coolify/applications/xk53thwe7wzp3wah1qxvttvg/secrets/google-adc.json`, root
 0600/directorio 0700, cubierto por el backup integral de `/data/coolify`. Copia y
 restauración aislada comprobadas sin mostrar contenido. Aún no está montado ni
-activado en runtime; el contenedor no se reinició para activar una vía bloqueada.
+activado en runtime todavía. En Coolify se preparó el bind persistente al archivo
+existente con destino `/run/secrets/google-adc.json:ro`; la versión instalada 4.1.2
+conserva ese sufijo al generar Compose. Comprobar `RW=false` tras publicar.
 
 Ruta que aprovecha el adaptador existente:
 
@@ -60,8 +70,8 @@ cabeceras de facturación. Esta vía necesitaría un adaptador adicional y compr
 acceso y volumen de descarga antes de activarla. No usar el bucket de ensemble
 completo `weathernext3_spatial`, que sí tiene Requester Pays activado.
 
-La aprobación no habilita WeatherNext en la aplicación por sí sola. Mantener el
-adaptador desactivado hasta comprobar una vía viable y una previsión real.
+La aprobación no habilita WeatherNext en la aplicación por sí sola. La conexión
+local está validada; falta comprobar recopilación y persistencia en Oracle.
 
 ## Solicitud del propietario
 
@@ -102,12 +112,13 @@ Variables de runtime (solo nombres y ejemplos sin secretos):
 
 ```text
 WEATHERNEXT_PROJECT=proyecto-sin-billing
-WEATHERNEXT_DATASET=proyecto-sin-billing.dataset_enlazado
-WEATHERNEXT_LOCATION=US
+WEATHERNEXT_BACKEND=earthengine
 GOOGLE_APPLICATION_CREDENTIALS=/ruta/privada/credenciales.json
 ```
 
-La región debe coincidir con el dataset. El cliente comprueba `billingEnabled == false`
+Para la alternativa BigQuery existente, seleccionar `WEATHERNEXT_BACKEND=bigquery`,
+`WEATHERNEXT_DATASET=proyecto.dataset` y `WEATHERNEXT_LOCATION=US`; la región debe
+coincidir con el dataset. Ese cliente comprueba `billingEnabled == false`
 antes de cada consulta, hace dry run y limita cada trabajo a 2 GiB. Reserva un
 presupuesto máximo de 900 GiB/mes y devuelve los bytes no utilizados al terminar.
 Las cuotas limitan uso; la garantía de no cobrar es mantener billing deshabilitado.
