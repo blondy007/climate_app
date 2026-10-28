@@ -3,19 +3,45 @@
 El adaptador está implementado. No se considera finalizado hasta comprobar datos
 reales en Oracle con una identidad autorizada por Google y sin facturación.
 
-## Estado revisado · 26/10/2026
+## Estado revisado · 28/10/2026
 
 Google ha confirmado por correo la aprobación de la solicitud del propietario.
 La aprobación se aplica a la cuenta indicada en el formulario y a las tres vías
 de acceso (BigQuery, Earth Engine y Cloud Storage); no entrega una clave API ni
 autoriza automáticamente otras identidades. No es necesario repetir la solicitud.
 
-El runtime aún no tiene proyecto/dataset de WeatherNext configurados ni ruta de
-credenciales ADC. Se comprobaron solo esas banderas, sin leer credenciales o
-SQLite de producción ni ejecutar consultas Google. El proyecto que estaba abierto
-en la consola tiene una cuenta de facturación de prueba vinculada: no usarlo para
-esta integración de coste cero ni confundir un coste actual de 0 € con billing
-deshabilitado. Preparar un proyecto dedicado sin cuenta de facturación.
+El propietario creó `climateapp-weathernext` sin facturación, enlazó el dataset
+`weathernext_3` en US y autenticó ADC con la cuenta aprobada. Se comprobó
+`billingEnabled == false` por API y el esquema requerido de las dos tablas. Solo
+se habilitaron Cloud Billing API (consulta del estado) y Earth Engine API; ninguna
+cuenta de facturación se vinculó.
+
+La comprobación real detectó un bloqueo del adaptador existente: las tablas
+enlazadas son vistas y el dry run estima 6 542 787 139 200 bytes; restringir ambas
+a una sola inicialización todavía estima 2 665 811 088 000 bytes. No se ejecutaron
+estas consultas ni se amplió el límite de 2 GiB. En tablas agrupadas el estimador
+puede ser una cota superior, pero
+[BigQuery comprueba esa cota contra maximum_bytes_billed antes de ejecutar](https://docs.cloud.google.com/bigquery/docs/best-practices-costs).
+
+La cuenta también accede a los metadatos del bucket GCS statistics sin Requester
+Pays. Sin embargo, los chunks reales contienen un mapa mundial completo por
+variable/hora (1801 × 3600 y 3601 × 7200 floats). Seleccionar un punto no evita
+descargar el chunk entero; no se descargaron datos meteorológicos por esta vía.
+
+Siguiente vía: [Earth Engine](https://developers.google.com/weathernext/guides/earth-engine),
+con reducción en el servidor al punto solicitado. API habilitada, pero devuelve
+que el proyecto no está registrado. El propietario debe completar el
+[registro de uso no comercial](https://console.cloud.google.com/earth-engine/configuration?project=climateapp-weathernext)
+con su uso real. El nivel Community no exige billing; no seleccionar planes de pago.
+Después hay que implementar/verificar el adaptador; todavía no se ha validado
+ninguna previsión real.
+
+El propietario autorizó copiar ADC a Oracle, montaje exclusivo de ClimateApp,
+configuración y reinicio para probarlo. Archivo preparado en el host bajo
+`/data/coolify/applications/xk53thwe7wzp3wah1qxvttvg/secrets/google-adc.json`, root
+0600/directorio 0700, cubierto por el backup integral de `/data/coolify`. Copia y
+restauración aislada comprobadas sin mostrar contenido. Aún no está montado ni
+activado en runtime; el contenedor no se reinició para activar una vía bloqueada.
 
 Ruta que aprovecha el adaptador existente:
 
@@ -34,9 +60,8 @@ cabeceras de facturación. Esta vía necesitaría un adaptador adicional y compr
 acceso y volumen de descarga antes de activarla. No usar el bucket de ensemble
 completo `weathernext3_spatial`, que sí tiene Requester Pays activado.
 
-La aprobación no habilita WeatherNext en la aplicación por sí sola. Esta revisión
-no ha creado recursos, aceptado acuerdos nuevos, concedido permisos ni activado
-facturación o consultas de datos reales.
+La aprobación no habilita WeatherNext en la aplicación por sí sola. Mantener el
+adaptador desactivado hasta comprobar una vía viable y una previsión real.
 
 ## Solicitud del propietario
 

@@ -1,16 +1,25 @@
-# Continuidad · 26 de octubre de 2026
+# Continuidad · 28 de octubre de 2026
 
 ## Estado útil
 
-- WeatherNext: correo de aprobación confirmado el 26/10/2026. La cuenta del
-  propietario ya tiene acceso concedido por Google; no se recibió una API key.
-  Runtime comprobado sin leer secretos/SQLite: WeatherNext sin configurar y sin
-  ruta ADC. El proyecto abierto en Google Cloud tiene cuenta de facturación de
-  prueba vinculada; usar otro dedicado sin billing. No se cambiaron permisos,
-  credenciales, recursos ni billing y no se consultaron datos Google. Integración
-  existente por BigQuery, pendiente dataset enlazado e identidad aprobada. Pasos
-  y alternativa GCS statistics con Requester Pays OFF en docs/weathernext-setup.md.
-  Revisión solicitada, aún no se ha activado WeatherNext ni se ha validado dato real.
+- WeatherNext: acceso aprobado y comprobado con ADC del propietario. Proyecto
+  dedicado `climateapp-weathernext`, dataset `weathernext_3`, región US y billing
+  deshabilitado. Cloud Billing API y Earth Engine API habilitadas, sin vincular
+  facturación. Ambas tablas reales tienen el esquema requerido, pero son vistas:
+  dry run actual 6.54 TB y una sola inicialización 2.67 TB (límite existente 2 GiB).
+  No se ejecutó ninguna consulta meteorológica BigQuery. GCS statistics accesible
+  sin Requester Pays, pero cada chunk contiene un mapa mundial por variable/hora;
+  no se descargaron chunks meteorológicos ni se implementó ese adaptador.
+  Earth Engine requiere registrar el proyecto para uso no comercial; se pidió al
+  propietario completar el cuestionario en Google Cloud. Es la siguiente vía a
+  probar; aún no hay adaptador Earth Engine ni previsión real validada.
+  Autorización vigente: copiar ADC a VPS, montar solo para ClimateApp, configurar
+  WeatherNext y reiniciar para probarlo. Archivo preparado privadamente bajo
+  `/data/coolify/applications/xk53thwe7wzp3wah1qxvttvg/secrets/google-adc.json`, root
+  0600/directorio 0700; copia/restauración aislada idéntica y carpeta ya cubierta por
+  backup integral. Aún sin montar, sin variables runtime nuevas ni reinicio: evitar
+  activar el adaptador BigQuery que bloquearía todas las consultas.
+  No desplegar cambios de interfaz ni tocar lluvia. Detalles en docs/weathernext-setup.md.
 - Producción actual: `08edaac75c1e9fa7c43dff1a126ebe60b11c1049`, desplegada por petición
   de Iván desde `codex/settings-section-order`. Apariencia → Tu cuenta → Tus lugares
   a la izquierda; previsión/fuentes a la derecha; orden móvil igual y un separador
@@ -70,7 +79,7 @@
 - No desplegar ni hacer push a oracle-production sin petición explícita nueva. Los commits
   locales de continuidad no deben provocar otro despliegue.
 - App pública desde móvil sin Tailscale; administración privada con Tailscale. Coste 0 EUR.
-- Login personal persistente implementado; WeatherNext espera aprobación real de Google.
+- Login personal persistente implementado; WeatherNext aprobado, pendiente integración viable.
 - Después de cerrar este trabajo, Iván prevé separar front y back para web de escritorio
   y móvil, Android muy probable e iPhone posible. No se ha iniciado la migración.
 
