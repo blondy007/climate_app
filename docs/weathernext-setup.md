@@ -1,9 +1,9 @@
 # WeatherNext 3 a coste cero
 
-El adaptador está implementado. No se considera finalizado hasta comprobar datos
-reales en Oracle con una identidad autorizada por Google y sin facturación.
+Integración operativa en Oracle mediante Earth Engine no comercial, con identidad
+aprobada y facturación deshabilitada. Versión desplegada: `e09d65f`.
 
-## Estado revisado · 28/10/2026
+## Estado revisado · 29/10/2026
 
 Google ha confirmado por correo la aprobación de la solicitud del propietario.
 La aprobación se aplica a la cuenta indicada en el formulario y a las tres vías
@@ -42,18 +42,23 @@ de 0.05°; viento, nubosidad y lluvia media horaria de 0.1°. Se conserva la úl
 inicialización disponible por hora válida y por malla, sin interpolar ni inventar
 un horizonte completo cuando falten datos. Los assets reales indexan
 `system:time_start` por inicialización: el adaptador usa `end_time` como hora válida.
-90 pruebas Python y 16 Node correctas; pendiente aceptación desde Oracle.
+90 pruebas Python y 16 Node correctas, también en Actions 40773994045. Despliegue
+autorizado expresamente y finalizado en Coolify. En Oracle se verificó recopilación
+y persistencia para Los Narejos, Torrejón de Ardoz y Costa Adeje: 348 horas futuras
+WeatherNext por lugar hasta 12/11 12:00 UTC en el momento de comprobar y consenso
+privado generado. Tres tareas WeatherNext correctas y recolector en reposo.
 
 El propietario autorizó copiar ADC a Oracle, montaje exclusivo de ClimateApp,
 configuración y reinicio para probarlo. Archivo preparado en el host bajo
 `/data/coolify/applications/xk53thwe7wzp3wah1qxvttvg/secrets/google-adc.json`, root
 0600/directorio 0700, cubierto por el backup integral de `/data/coolify`. Copia y
-restauración aislada comprobadas sin mostrar contenido. Aún no está montado ni
-activado en runtime todavía. En Coolify se preparó el bind persistente al archivo
+restauración aislada comprobadas sin mostrar contenido. En Coolify se aplicó el bind persistente al archivo
 existente con destino `/run/secrets/google-adc.json:ro`; la versión instalada 4.1.2
-conserva ese sufijo al generar Compose. Comprobar `RW=false` tras publicar.
+conserva ese sufijo al generar Compose. Docker confirma `RW=false`, ADC 0600,
+backend Earth Engine configurado y volumen original de datos conservado. HTTPS
+y health 200, contenedor exacto healthy, monitor Kuma Up y logs 10m sin errores.
 
-Ruta que aprovecha el adaptador existente:
+Preparación de BigQuery (alternativa existente, bloqueada por los límites observados):
 
 1. Usar la cuenta aprobada para acceder al proyecto dedicado de BigQuery sandbox.
 2. Enlazar el dataset de [Analytics Hub desde la guía oficial de BigQuery](https://developers.google.com/weathernext/guides/bigquery).
@@ -70,8 +75,10 @@ cabeceras de facturación. Esta vía necesitaría un adaptador adicional y compr
 acceso y volumen de descarga antes de activarla. No usar el bucket de ensemble
 completo `weathernext3_spatial`, que sí tiene Requester Pays activado.
 
-La aprobación no habilita WeatherNext en la aplicación por sí sola. La conexión
-local está validada; falta comprobar recopilación y persistencia en Oracle.
+La aprobación no habilita WeatherNext por sí sola: requiere registro Earth Engine,
+ADC privado, configuración runtime y un despliegue del adaptador. Todos estos
+pasos están verificados. El acceso público/personal y el login mantienen las
+pruebas de aislamiento; la sesión anónima real no se autentica y usa no-store.
 
 ## Solicitud del propietario
 

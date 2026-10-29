@@ -1,4 +1,4 @@
-# Continuidad · 28 de octubre de 2026
+# Continuidad · 29 de octubre de 2026
 
 ## Estado útil
 
@@ -17,16 +17,26 @@
   indexan system:time_start por init, por eso se usa end_time como hora válida.
   Primera lectura real aislada de Los Narejos: 351 horas hasta 12/11 12:00 UTC,
   inits 28/10 12/14 UTC; 90 pruebas Python + 16 Node pasan.
-  Autorización vigente: copiar ADC a VPS, montar solo para ClimateApp, configurar
-  WeatherNext y reiniciar para probarlo. Archivo preparado privadamente bajo
+  Despliegue e09d65fa47b6842ce7eeec53ce6cd7ec84ac0065 autorizado específicamente
+  por Iván tras rechazo inicial del push. Actions 40773994045 success y Coolify
+  wg8bgcolkk17izrmlccr71ni finished. Imagen exacta running/healthy comprobada el
+  29/10; HTTPS/health 200, sesión anónima no-store, Kuma 5 Up y logs 10m sin errores.
+  Recopilación real persistida y consenso privado disponibles para Los Narejos,
+  Torrejón de Ardoz y Costa Adeje: 348 horas WeatherNext futuras hasta 12/11 12:00 UTC
+  en la comprobación y 359 de consenso. Tres tareas WeatherNext ok, collector idle.
+  Archivo privado bajo
   `/data/coolify/applications/xk53thwe7wzp3wah1qxvttvg/secrets/google-adc.json`, root
   0600/directorio 0700; copia/restauración aislada idéntica y carpeta ya cubierta por
   backup integral. Montaje con destino /run/secrets/google-adc.json:ro y tres
-  variables solo runtime preparados en Coolify; todavía sin reinicio/publicación.
-  Siguiente paso autorizado: publicar adaptador y verificar RW=false, recopilación
-  real por lugar, aislamiento anónimo/personal y salud. No usar BigQuery.
-  No desplegar cambios de interfaz ni tocar lluvia. Detalles en docs/weathernext-setup.md.
-- Producción actual: `08edaac75c1e9fa7c43dff1a126ebe60b11c1049`, desplegada por petición
+  variables solo runtime aplicados. Verificado Docker RW=false para ADC, RW=true
+  para el volumen original /app/data y binding 127.0.0.1:8501 conservados. Aislamiento
+  público/personal y login verificados en las 90 pruebas; sesión anónima real correcta.
+  No se ejecutaron nuevas consultas para la UI ni se leyó/exportó SQLite para
+  pruebas de interfaz; la verificación backend emitió solo estados/recuentos.
+  Cierre canónico publicado en oracle-vps-infra master como 88c7e74.
+  Sin tareas funcionales pendientes; no repetir el despliegue ni las consultas.
+  No publicar más código sin nueva petición. Detalles en docs/weathernext-setup.md.
+- Interfaz anterior: `08edaac75c1e9fa7c43dff1a126ebe60b11c1049`, desplegada por petición
   de Iván desde `codex/settings-section-order`. Apariencia → Tu cuenta → Tus lugares
   a la izquierda; previsión/fuentes a la derecha; orden móvil igual y un separador
   antes de Añadir lugar. Actions 39657325068: 84 Python + 16 Node y disparador API
