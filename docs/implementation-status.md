@@ -5,27 +5,37 @@ misma URL y rama Oracle. Conservar histórico e incorporar previsión de
 WeatherNext 3 y fuentes gratuitas, ubicaciones ampliables, archivo automático,
 comparación climatológica, evaluación contra estaciones y consenso ponderado.
 
-El objetivo NO está terminado hasta verificar WeatherNext 3 con datos reales.
-La autorización de Google está aprobada por correo (revisión 26/10/2026);
-faltan el proyecto/dataset sin facturación y la autenticación privada del runtime.
-El adaptador no se considera verificado por recibir la aprobación. No activar billing,
-pruebas de pago, recursos OCI ni APIs comerciales.
+## Estado actual · auditoría del 04/11/2026
 
-## Implementación prevista
+WeatherNext 3 quedó integrado y desplegado el **29/10**, mediante Earth Engine
+no comercial con facturación deshabilitada. Versión `e09d65f`, recopilación y
+persistencia reales verificadas entonces para tres lugares. La aprobación,
+identidad y configuración ya no son tareas pendientes. Detalles y evidencias
+canónicas en [WeatherNext](weathernext-setup.md) y `oracle-vps-infra/apps/climate-app.md`.
+
+El 04/11 se confirma la misma imagen en producción, running/healthy durante seis
+días y HTTPS health 200. La lectura de recuentos y fechas actuales en SQLite de
+producción fue rechazada por la revisión automática por la restricción previa
+de no leer esa base. No se ejecutó ni se ha eludido la restricción. Falta esa
+comprobación concreta de actualidad antes de cerrar el objetivo global.
+[Auditoría por requisito](completion-audit-2026-11-04.md).
+
+## Implementación actual
 
 - Streamlit/Python y Docker existentes; SQLite en el volumen `/app/data`.
 - Recolector independiente de sesiones web, reintentos limitados y cuotas.
 - ECMWF, DWD ICON y NOAA GFS vía Open-Meteo; MET Norway como segunda API.
-- WeatherNext 3 mediante BigQuery sin facturación, con comprobación de billing,
-  dry run, límites por consulta y presupuesto mensual de bytes.
-- Observaciones Meteostat con `model=False`, estación explícita y distancias.
-- Evaluación por ubicación, variable y horizonte; datos disponibles antes del
-  instante de predicción, mínimo de muestras y pesos regularizados.
-- Incertidumbre nativa separada de desacuerdo entre modelos; sin probabilidades
-  inventadas ni verificación contra un modelo presentado como observación.
-- Snapshot consistente SQLite para backup y restauración aislada.
+- WeatherNext 3 por Earth Engine no comercial: lectura puntual, malla nativa,
+  facturación explícitamente deshabilitada y cuota compartida de 240 lecturas/día.
+  BigQuery queda como alternativa bloqueada por su tamaño de consulta; no se activa.
+- Observaciones Meteostat con procedencia observacional por variable, estación
+  explícita y distancias; no se validan modelos contra sustitutos de modelo.
+- Evaluación por ubicación, variable y horizonte, con cronología, mínimo de muestras
+  y pesos regularizados. Consenso público separado del privado que usa WeatherNext.
+- Incertidumbre nativa separada del desacuerdo entre modelos; sin probabilidades inventadas.
+- Snapshots SQLite, histórico conservado, climatología y gestión ampliable de lugares.
 
-## Evidencia y pendientes
+## Evidencia histórica de desarrollo
 
 - 2026-10-20: checkout inicial limpio, `oracle-production` = `4ae8cd1` remoto.
 - VPS accesible por Tailscale; Climate App inicial healthy en ese commit.
@@ -59,5 +69,4 @@ pruebas de pago, recursos OCI ni APIs comerciales.
   Verificado en 320, 390 y 1280 px, con datos sintéticos locales para la previsualización.
 - El propietario rechazó Tailscale para acceder a la app: se implementa login en
   la web HTTPS. Tailscale queda reservado a administración de la VPS.
-- Pendiente externo: acceso WeatherNext aprobado y credenciales de runtime
-  configuradas de forma privada; no se han recibido ni solicitado secretos.
+- Pendiente inicial resuelto el 29/10: WeatherNext real, ADC privado y backend Earth Engine no comercial. Ver la auditoría actual antes de cerrar el objetivo.
