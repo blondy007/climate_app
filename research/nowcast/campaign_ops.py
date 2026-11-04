@@ -9,6 +9,8 @@ import argparse
 from datetime import datetime, timezone
 import hashlib
 import json
+import os
+import time
 from pathlib import Path
 import shutil
 import subprocess
@@ -69,6 +71,37 @@ def exclusive(path, value):
         json.dump(value, out, indent=2, ensure_ascii=False, allow_nan=False)
 
 
+def collector_budget(root):
+    """Seed private state for the UID that will actually read it in Docker.
+
+    systemd uses UMask=0077 and runs this writer as root. Leaving root ownership
+    would make the collector fail before its first heartbeat. Never widen mode
+    or overwrite a previous campaign budget to work around that failure.
+    """
+    path = Path(root)/'live-budget.json'
+    with path.open('x', encoding='utf-8') as out:
+        if os.name == 'posix':
+            os.fchown(out.fileno(), 1000, 1000)
+            os.fchmod(out.fileno(), 0o600)
+        json.dump({'reserved_download_bytes': PROBE_RESERVE}, out)
+
+
+def wait_for_initial_status(root, name, timeout=30):
+    """A successful docker start is not evidence that Python initialized."""
+    until = time.monotonic()+timeout
+    while time.monotonic() < until:
+        state=json.loads(run(['docker','inspect','--format','{{json .State}}',name],15).stdout)
+        if not state.get('Running'):
+            raise RuntimeError('Collector exited before initialization')
+        status=Path(root)/'live-status.json'
+        if status.is_file():
+            value=json.loads(status.read_text(encoding='utf-8'))
+            if value.get('status') in ('collecting','degraded'):
+                return
+        time.sleep(1)
+    raise RuntimeError('Collector initialization was not confirmed')
+
+
 def run(args, timeout=45):
     return subprocess.run(args, capture_output=True, text=True, timeout=timeout, check=True)
 
@@ -122,7 +155,7 @@ def start():
         exclusive(ROOT/f'start-blocked-{number}.json',{'at':now().isoformat(),'reason':'source_gate_failed',
                   'probe':value,'approved_for_public_use':False})
         raise RuntimeError('Radar source gate failed; campaign not launched')
-    exclusive(ROOT/'live-budget.json',{'reserved_download_bytes':PROBE_RESERVE})
+    collector_budget(ROOT)
     # Only the new research subdirectory is exposed to the collector.
     args = ['docker','create','--name',NAME,'--cpus','0.5','--memory','768m',
             '--pids-limit','128','--read-only','--cap-drop','ALL','--security-opt',
@@ -133,6 +166,7 @@ def start():
             'python','-m','research.nowcast.live','--root','/data','--expires-at',END.isoformat()]
     container_id = run(args).stdout.strip()
     run(['docker','start',NAME])
+    wait_for_initial_status(ROOT, NAME)
     exclusive(ROOT/'started.json',{'at':now().isoformat(),'container':NAME,'container_id':container_id,
               'expires_at':END.isoformat(),'approved_for_public_use':False})
 

@@ -1,6 +1,7 @@
 """Safety properties of the second trial's scheduling, gates and isolation."""
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -22,8 +23,9 @@ class CampaignSafetyTests(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name)
-        self.patches=[patch.object(ops,'ROOT',self.root),patch.object(ops,'now',return_value=ops.START),
+        self.patches=[patch.object(ops.os,'fchown',create=True),patch.object(ops,'ROOT',self.root),patch.object(ops,'now',return_value=ops.START),
                       patch.object(ops,'probe',return_value=source()),
+                      patch.object(ops,'wait_for_initial_status'),
                       patch.object(ops.shutil,'disk_usage',return_value=type('Disk',(),{'free':20*1024**3})()),
                       patch.object(ops,'run',return_value=type('Result',(),{'stdout':'test-container-id'})())]
         for p in self.patches:
@@ -83,6 +85,30 @@ class CampaignSafetyTests(unittest.TestCase):
         calls=ops.run.call_count
         ops.start()
         self.assertEqual(ops.run.call_count,calls)
+
+    def test_budget_stays_exclusive_and_private_under_systemd_umask(self):
+        old=os.umask(0o077)
+        try:
+            ops.collector_budget(self.root)
+        finally:
+            os.umask(old)
+        budget=self.root/'live-budget.json'
+        self.assertEqual(json.loads(budget.read_text())['reserved_download_bytes'],750_000_000)
+        if os.name == 'posix':
+            self.assertEqual(budget.stat().st_mode & 0o777,0o600)
+            ops.os.fchown.assert_called_once()
+            self.assertEqual(ops.os.fchown.call_args.args[1:],(1000,1000))
+        with self.assertRaises(FileExistsError):
+            ops.collector_budget(self.root)
+
+    def test_docker_success_without_initialization_is_not_recorded_as_started(self):
+        ops.wait_for_initial_status.side_effect=RuntimeError('Collector exited before initialization')
+        with self.assertRaisesRegex(RuntimeError,'before initialization'):
+            ops.start()
+        self.assertFalse((self.root/'started.json').exists())
+        self.assertTrue((self.root/'live-budget.json').exists())
+        with self.assertRaisesRegex(RuntimeError,'never be recreated'):
+            ops.start()
 
     def test_finish_cannot_stop_before_deadline(self):
         with self.assertRaisesRegex(RuntimeError,'before the authorized deadline'):

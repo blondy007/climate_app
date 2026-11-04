@@ -110,14 +110,14 @@ Consultar solo estos archivos de investigación; nunca exportar el volumen enter
 No cambiar el modelo conservando el mismo identificador ni sustituir predicciones
 ya emitidas. Cualquier versión nueva necesita otro identificador y episodios futuros.
 
-## Segunda campaña autorizada
+## Segunda campaña cerrada
 
-El 28/10 Iván autorizó una campaña independiente del **30/10 12:00 al 02/11
-12:00 CET**, condicionada a cobertura reciente antes del arranque. La prueba
-preparatoria detectó una imagen sin cobertura en Los Alcázares; no se presenta
-la fuente como validada. Arranque y parada programados en la VPS, límites
-conservadores y motor original congelado. [Plan, comprobaciones y operación](results/2026-10-30-campaign.md). La campaña anterior no se reabre ni se
-renueva su presupuesto. La integración pública sigue desactivada.
+La ventana autorizada del **30/10 12:00 al 02/11 12:00 CET** terminó sin
+observaciones ni emisiones: el sondeo de fuente pasó, pero el colector falló
+por permisos del presupuesto creado por root bajo umask 0077. No valida ni
+refuta la predicción de lluvia. [Informe final y corrección verificada](results/2026-11-04-final.md).
+El [plan previo](results/2026-10-30-campaign.md) se conserva. No reabrir la campaña,
+renovar su presupuesto ni iniciar otra sin autorización. Integración pública desactivada.
 
 ## Pluviómetro independiente
 
