@@ -12,6 +12,8 @@ from climate_app.ui.appearance import PALETTES, palette, sync_appearance
 
 WEEKDAYS = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 MONTHS = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre")
+CLEAR_BELOW, CLOUDY_FROM = 15, 85
+RAIN_FROM = 0.1  # mm
 
 
 def text(value):
@@ -43,22 +45,44 @@ def icon(name, size=22):
     return f'<svg xmlns="http://www.w3.org/2000/svg" class="line-icon" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{paths.get(name, paths["chart"])}</svg>'
 
 
+def is_daytime(hour):
+    return (hour >= 7) & (hour < 20)
+
+
 def weather_kind(row, timezone="Europe/Madrid"):
-    rain, cloud = row.get("precipitation"), row.get("cloud_cover")
     when = row.get("valid_time")
-    hour = pd.Timestamp(when).tz_convert(timezone).hour if when is not None else 12
-    night = hour < 7 or hour >= 20
-    if pd.notna(rain) and rain >= 0.1:
+    hour = pd.Timestamp(when).tz_convert(timezone).hour if pd.notna(when) else 12
+    return sky_condition(row.get("cloud_cover"), row.get("precipitation"), is_daytime(hour))
+
+
+def sky_condition(cloud, rain, daytime):
+    if pd.notna(rain) and rain >= RAIN_FROM:
         return "rain", "Precipitación prevista"
-    if pd.notna(cloud) and cloud >= 70:
+    if pd.notna(cloud) and cloud >= CLOUDY_FROM:
         return "cloud", "Cielo nuboso"
-    if pd.notna(cloud) and cloud >= 25:
-        return ("partly_night", "Nubes y claros") if night else ("partly", "Sol y nubes")
+    if pd.notna(cloud) and cloud >= CLEAR_BELOW:
+        return ("partly", "Sol y nubes") if daytime else ("partly_night", "Nubes y claros")
     if pd.isna(cloud):
         return "unknown", "Previsión local"
-    if night:
-        return "night", "Cielo despejado"
-    return "sun", "Cielo despejado"
+    return ("sun" if daytime else "night"), "Cielo despejado"
+
+
+def daily_weather_kind(samples, precipitation, timezone):
+    local_hours = samples.valid_time.dt.tz_convert(timezone).dt.hour
+    daytime = is_daytime(local_hours)
+    relevant = samples[daytime] if daytime.any() else samples
+    cloud = relevant.cloud_cover.dropna()
+    # Keep the mixed icon if at least a quarter of the known hours differ from
+    # an otherwise clear or cloudy day. A lone noon forecast cannot decide it.
+    representative = None
+    if not cloud.empty:
+        if cloud.lt(CLEAR_BELOW).mean() > .75:
+            representative = 0
+        elif cloud.ge(CLOUDY_FROM).mean() > .75:
+            representative = 100
+        else:
+            representative = 50
+    return sky_condition(representative, precipitation, daytime.any())
 
 
 def weather_svg(kind="partly", size=80):
@@ -70,12 +94,13 @@ def weather_svg(kind="partly", size=80):
         art = '<g transform="translate(11 12)">' + sun + '</g>'
     elif kind == "night":
         art = moon
-    elif kind == "partly_night":
-        art = moon + cloud
+    elif kind in ("partly", "partly_night"):
+        behind = '<g transform="translate(10 4)">' + sun + '</g>' if kind == "partly" else moon
+        art = behind + '<g transform="translate(0 26) scale(.78)">' + cloud + '</g>'
     elif kind == "unknown":
         art = '<circle cx="55" cy="52" r="30" fill="#DCEAF2"/><path d="M37 60h36M37 48h25M37 36h13" stroke="#5B819A" stroke-width="4" stroke-linecap="round"/>'
     else:
-        art = ('<g transform="translate(18 -8)">' + sun + '</g>' if kind == "partly" else "") + cloud
+        art = cloud
         if kind == "rain":
             art += '<path d="m34 85-4 10m27-10-4 10m27-10-4 10" stroke="#7BCCFF" stroke-width="5" stroke-linecap="round"/>'
         elif kind == "snow":
@@ -191,9 +216,7 @@ def daily_cards(daily, main, timezone, on_select, selected_day=None):
         for _, day in daily.iterrows():
             label = day_label(day.date, timezone)
             samples = main[main.valid_time.dt.tz_convert(timezone).dt.date == day.date]
-            representative = samples.iloc[len(samples)//2].copy()
-            representative["precipitation"] = day.precipitation
-            kind, condition = weather_kind(representative, timezone)
+            kind, condition = daily_weather_kind(samples, day.precipitation, timezone)
             start = max(0, min(100, 100 * (day.minimum - low) / span)) if pd.notna(day.minimum) and pd.notna(low) else 0
             width = max(3, min(100 - start, 100 * (day.maximum - day.minimum) / span)) if pd.notna(day.maximum) and pd.notna(day.minimum) else 0
             rain = value(day.probability,"%") if pd.notna(day.probability) else value(day.precipitation," mm",1)

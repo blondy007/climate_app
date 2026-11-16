@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pandas as pd
 
 from climate_app.forecast.domain import Location
-from climate_app.ui.design import hero_html, hourly_strip, weather_kind
+from climate_app.ui.design import daily_weather_kind, hero_html, hourly_strip, weather_kind
 
 
 class PresentationTests(unittest.TestCase):
@@ -33,6 +33,31 @@ class PresentationTests(unittest.TestCase):
 
     def test_freezing_rain_is_not_presented_as_a_snow_forecast(self):
         self.assertEqual(weather_kind({"temperature": -1, "precipitation": .5})[0], "rain")
+
+    def test_hourly_cloud_cover_distinguishes_clear_mixed_and_cloudy_skies(self):
+        for cloud, expected in [(10, "sun"), (20, "partly"), (75, "partly"), (85, "cloud")]:
+            with self.subTest(cloud=cloud):
+                self.assertEqual(weather_kind({"cloud_cover": cloud, "precipitation": 0})[0], expected)
+        night = pd.Timestamp("2026-11-16T23:00:00Z")
+        self.assertEqual(weather_kind({"valid_time": night, "cloud_cover": 75})[0], "partly_night")
+
+    def test_daily_icon_uses_local_daytime_instead_of_midpoint_or_cloudy_night(self):
+        times = pd.date_range("2026-11-16", periods=24, freq="h", tz="Europe/Madrid")
+        frame = pd.DataFrame({"valid_time": times.tz_convert("UTC"), "cloud_cover": 100})
+        # Eight clear daytime hours and five overcast ones, including noon.
+        frame.loc[[7, 8, 9, 10, 16, 17, 18, 19], "cloud_cover"] = 10
+        self.assertEqual(daily_weather_kind(frame, 0, "Europe/Madrid")[0], "partly")
+        frame.loc[7:19, "cloud_cover"] = 10
+        self.assertEqual(daily_weather_kind(frame, 0, "Europe/Madrid")[0], "sun")
+        frame.loc[7:19, "cloud_cover"] = 95
+        self.assertEqual(daily_weather_kind(frame, 0, "Europe/Madrid")[0], "cloud")
+        self.assertEqual(daily_weather_kind(frame, .1, "Europe/Madrid")[0], "rain")
+
+    def test_daily_icon_handles_remaining_night_and_missing_daytime_cloud_cover(self):
+        frame = pd.DataFrame({"valid_time": pd.to_datetime(["2026-11-16T12:00:00Z", "2026-11-16T22:00:00Z"]),
+                              "cloud_cover": [None, 75]})
+        self.assertEqual(daily_weather_kind(frame, None, "Europe/Madrid")[0], "unknown")
+        self.assertEqual(daily_weather_kind(frame.iloc[1:], 0, "Europe/Madrid")[0], "partly_night")
 
     def test_location_html_is_escaped_and_forecast_is_identified(self):
         when = datetime(2026, 10, 20, 12, tzinfo=timezone.utc)

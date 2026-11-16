@@ -54,6 +54,12 @@ Los cambios de lugar o modelo reinician la selección; un horizonte que ya no
 incluye el día también la reinicia. Los días de 25 horas conservan ambas horas
 repetidas con su zona, y la portada sigue describiendo la próxima hora prevista.
 
+Los iconos por hora muestran sol y nubes entre el 15 % y menos del 85 % de
+nubosidad. El icono diario resume las horas diurnas disponibles: solo muestra
+un cielo despejado o nuboso si más de tres cuartas partes de las horas con
+datos coinciden; en los demás casos muestra nubes y claros. Si solo hay horas
+nocturnas, las usa con icono nocturno. Se mantiene la prioridad de precipitación.
+
 La previsión muestra temperatura y sensación térmica juntas en portada, horas y
 rangos diarios; Evolución muestra ambas curvas. Comparar modelos y Climatología
 permiten elegir la sensación, que también figura en tablas, CSV y Aciertos.
